@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Quadrado Mágico ITXPRO 500k — Planejador de Funil</title>
+<title>Simulador de Funis ITXPRO</title>
 <style>
   :root{
     --laranja:#e67e22;
@@ -154,6 +154,38 @@
   .nav .divisor{height:1px;background:#333;margin:14px 2px 6px}
   .nav .dash-btn{border-color:var(--laranja-claro)}
   .nav .dash-btn .dot{background:var(--laranja-claro)}
+  .nav .funnel-btn{position:relative}
+  .nav .nav-edit{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:rgba(255,255,255,.12);border:none;color:#fff;
+    width:22px;height:22px;border-radius:6px;cursor:pointer;font-size:11px;opacity:0;transition:.15s;display:flex;align-items:center;justify-content:center}
+  .nav .funnel-btn:hover .nav-edit{opacity:1}
+  .nav .nav-edit:hover{background:var(--laranja)}
+  .nav .create-btn{background:transparent;border:1px dashed var(--laranja);color:var(--laranja-claro);justify-content:center;font-weight:700}
+  .nav .create-btn:hover{background:rgba(230,126,34,.12);color:#fff}
+
+  /* ---------- Modal ---------- */
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:50}
+  .modal-box{background:#fff;width:min(460px,92vw);max-height:88vh;overflow:auto;border-radius:16px;padding:22px 24px;box-shadow:0 20px 60px rgba(0,0,0,.4)}
+  .modal-box h3{font-size:18px;font-weight:800;margin-bottom:14px}
+  .modal-lbl{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--cinza);font-weight:700;margin:14px 0 6px}
+  .modal-lbl .modal-hint{text-transform:none;letter-spacing:0;color:#aaa;font-weight:400}
+  .modal-input{width:100%;border:1px solid var(--cinza-claro);border-radius:8px;padding:9px 11px;font-size:14px}
+  .modal-input:focus{outline:none;border-color:var(--laranja)}
+  .mstage{display:flex;align-items:center;gap:8px;margin-bottom:7px}
+  .mstage .idx{width:20px;text-align:center;font-size:11px;font-weight:800;color:var(--laranja);flex-shrink:0}
+  .mstage input{flex:1;border:1px solid var(--cinza-claro);border-radius:7px;padding:8px 10px;font-size:13px}
+  .mstage input:focus{outline:none;border-color:var(--laranja)}
+  .mstage .ms-del{width:26px;height:26px;border:none;border-radius:6px;background:#f0f0f0;color:#888;cursor:pointer;flex-shrink:0}
+  .mstage .ms-del:hover{background:#e74c3c;color:#fff}
+  .modal-add{margin-top:4px;background:var(--laranja-suave);color:var(--laranja);border:1px solid var(--laranja);border-radius:8px;padding:8px 12px;font-size:12px;font-weight:700;cursor:pointer}
+  .modal-add:hover{background:var(--laranja);color:#fff}
+  .modal-foot{display:flex;align-items:center;gap:10px;margin-top:22px}
+  .modal-spacer{flex:1}
+  .modal-btn{background:var(--laranja);color:#fff;border:none;border-radius:8px;padding:10px 18px;font-size:13px;font-weight:700;cursor:pointer}
+  .modal-btn:hover{background:#d35400}
+  .modal-btn.ghost{background:#f0f0f0;color:var(--preto)}
+  .modal-btn.ghost:hover{background:#e2e2e2}
+  .modal-del{background:transparent;border:1px solid #e74c3c;color:#e74c3c;border-radius:8px;padding:9px 14px;font-size:12px;font-weight:700;cursor:pointer}
+  .modal-del:hover{background:#e74c3c;color:#fff}
 
   /* ---------- Dashboard ---------- */
   #dash{display:flex;flex-direction:column;gap:14px;height:calc(100vh - 110px)}
@@ -196,8 +228,8 @@
 <div class="app">
   <aside class="sidebar">
     <div class="brand">
-      <div class="quad">QUADRADO MÁGICO</div>
-      <h1>ITXPRO 500k</h1>
+      <div class="quad">SIMULADOR DE FUNIS</div>
+      <h1>ITXPRO</h1>
       <div class="sub">Planejador de funil de vendas</div>
     </div>
     <nav class="nav" id="nav"></nav>
@@ -254,7 +286,7 @@
         <div class="ftitle">
           <div class="src">DASHBOARD</div>
           <h2>Receita total projetada</h2>
-          <div class="fontes">Somatório consolidado dos 4 funis do Quadrado Mágico 500k</div>
+          <div class="fontes">Somatório consolidado de todos os funis do simulador</div>
         </div>
         <div class="rev-badge">
           <div class="lbl">RECEITA TOTAL</div>
@@ -264,61 +296,78 @@
       <div id="dash"></div>
     </div>
   </main>
+
+  <!-- ===== Modal: criar / editar funil ===== -->
+  <div id="modal" class="modal-overlay" style="display:none">
+    <div class="modal-box">
+      <h3 id="modalTitle">Criar novo funil</h3>
+      <label class="modal-lbl">Nome do funil</label>
+      <input id="mFunnelName" class="modal-input" placeholder="Ex.: INDICAÇÕES" autocomplete="off">
+      <label class="modal-lbl">Etapas <span class="modal-hint">(a 1ª etapa é a entrada de leads)</span></label>
+      <div id="mStages"></div>
+      <button id="mAddStage" class="modal-add" type="button">+ Adicionar etapa</button>
+      <div class="modal-foot">
+        <button id="mDelete" class="modal-del" type="button">Excluir funil</button>
+        <span class="modal-spacer"></span>
+        <button id="mCancel" class="modal-btn ghost" type="button">Cancelar</button>
+        <button id="mSave" class="modal-btn" type="button">Salvar</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script>
-/* ---------- Dados dos funis ---------- */
-const FUNNELS = {
-  eventos: {
-    nome:"EVENTOS",
+/* ---------- Funis padrão ---------- */
+const DEFAULTS = [
+  { id:"eventos", nome:"EVENTOS",
     fontes:["Comunidade","Grupos de eventos anteriores","LinkedIn"],
     etapas:["Eventos","Aplicação","Agendamento","Ligação de filtragem","Call de Análise e vendas","Vendas"],
-    defaults:[10000,3000,1500,800,400,200]
-  },
-  assessment: {
-    nome:"ASSESSMENT",
+    defaults:[10000,3000,1500,800,400,200] },
+  { id:"assessment", nome:"ASSESSMENT",
     fontes:["NPS","Novos Membros da Comunidade"],
     etapas:["Assessment (Base Interna)","Escolha de perfil","Abertura via WhatsApp","Ligação de qualificação","Call de Assessment e vendas","Vendas"],
-    defaults:[5000,2500,1500,900,500,250]
-  },
-  sht: {
-    nome:"SHT",
+    defaults:[5000,2500,1500,900,500,250] },
+  { id:"sht", nome:"SHT",
     fontes:["Base completa, exceto alunos"],
     etapas:["SHT","Aplicação","Agendamento","Ligação de filtragem","Call de Análise e vendas","Vendas"],
-    defaults:[8000,2400,1200,700,350,175]
-  },
-  prospeccao: {
-    nome:"PROSPECÇÃO",
+    defaults:[8000,2400,1200,700,350,175] },
+  { id:"prospeccao", nome:"PROSPECÇÃO",
     fontes:["LinkedIn","Instagram"],
     etapas:["Prospecção (Lista Fria)","Escolha do Perfil","Conexão no LinkedIn","Abordagem X1 DM LinkedIn","Ligação de qualificação","Call de Diagnóstico e vendas","Vendas"],
-    defaults:[10000,4000,2000,1000,600,300,150]
-  }
-};
+    defaults:[10000,4000,2000,1000,600,300,150] }
+];
 const PRODUTOS = ["MENTORIA GRC TI START","MENTORIA GRC TI PRO","MENTORIA GRC TI MASTER"];
 const MAX = 10000;
 const STORE_KEY = "qm500k_state_v1";
 
 const brl = n => new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0}).format(n||0);
 const num = n => new Intl.NumberFormat('pt-BR').format(Math.round(n||0));
+const uid = () => 'f'+Date.now().toString(36)+Math.floor(Math.random()*1e4).toString(36);
 
 /* ---------- Estado ---------- */
-// Etapa 0 = leads de entrada (absoluto, val). Demais etapas = taxa de
-// conversão sobre a etapa anterior (conv, em %). Os absolutos são derivados.
-function freshFunnel(k){
-  const d=FUNNELS[k].defaults;
-  return {
-    stages:FUNNELS[k].etapas.map((nome,i)=>{
-      if(i===0) return {nome,val:d[0]};
-      const c = d[i-1]>0 ? (d[i]/d[i-1]*100) : 0;
-      return {nome, conv:Math.round(c*10)/10};
-    }),
-    produtos:PRODUTOS.map(()=>({qtd:0,ticket:0}))
-  };
+// state = { funnels:[ {id,nome,isDefault,fontes,stages,produtos} ] }
+// Etapa 0 = leads de entrada (absoluto, val). Demais = taxa de conversão (conv, %).
+function defStages(d){
+  return d.etapas.map((nome,i)=>{
+    if(i===0) return {nome,val:d.defaults[0]};
+    const c = d.defaults[i-1]>0 ? (d.defaults[i]/d.defaults[i-1]*100) : 0;
+    return {nome, conv:Math.round(c*10)/10};
+  });
 }
-function freshState(){
-  const s={};
-  for(const k in FUNNELS) s[k]=freshFunnel(k);
-  return s;
+function freshDefaultFunnel(d){
+  return { id:d.id, nome:d.nome, isDefault:true, fontes:d.fontes.slice(),
+           stages:defStages(d), produtos:PRODUTOS.map(()=>({qtd:0,ticket:0})) };
+}
+function freshState(){ return { funnels: DEFAULTS.map(freshDefaultFunnel) }; }
+function getFunnel(id){ return state.funnels.find(f=>f.id===id); }
+
+// Garante o invariante: etapa 0 com val (absoluto), demais com conv (%).
+function normalizeStages(stages){
+  stages.forEach((s,i)=>{
+    if(i===0){ if(s.val===undefined) s.val=1000; delete s.conv; }
+    else     { if(s.conv===undefined) s.conv=50;  delete s.val; }
+  });
+  return stages;
 }
 // Calcula os valores absolutos de cada etapa a partir do topo + conversões.
 function computeAbs(stages){
@@ -328,51 +377,73 @@ function computeAbs(stages){
   });
   return abs;
 }
+function sanitizeStages(arr){
+  const st=arr.filter(s=>s&&typeof s.nome==='string').map((s,i)=>
+    i===0 ? {nome:s.nome, val: s.val!==undefined?clamp(s.val):0}
+          : {nome:s.nome, conv:s.conv!==undefined?clampPct(s.conv):0});
+  if(st.length>=1 && st[0].val===undefined) st[0]={nome:st[0].nome,val:0};
+  return st;
+}
+function sanitizeProdutos(arr){
+  const p=PRODUTOS.map(()=>({qtd:0,ticket:0}));
+  if(Array.isArray(arr)) arr.forEach((x,i)=>{ if(i<3) p[i]={qtd:x.qtd||0,ticket:x.ticket||0}; });
+  return p;
+}
 function load(){
   try{
     const raw=JSON.parse(localStorage.getItem(STORE_KEY));
     if(!raw) return freshState();
-    const base=freshState();
-    for(const k in base){
-      const r=raw[k]; if(!r) continue;
-      if(Array.isArray(r.stages)){            // formato novo (val no topo, conv nas demais)
-        const st=r.stages.filter(s=>s&&typeof s.nome==='string').map((s,i)=>
-          i===0 ? {nome:s.nome, val: s.val!==undefined?clamp(s.val):0}
-                : {nome:s.nome, conv: s.conv!==undefined?clampPct(s.conv):0});
-        if(st.length>=1){ if(st[0].val===undefined) st[0]={nome:st[0].nome,val:0}; base[k].stages=st; }
-      }else if(Array.isArray(r.etapas)){       // formato bem antigo (só números por índice) → vira conversões
-        const nums=r.etapas;
-        base[k].stages=base[k].stages.map((s,i)=>{
-          if(i===0) return {nome:s.nome, val: clamp(nums[0]!==undefined?nums[0]:s.val)};
-          const prev=nums[i-1], cur=nums[i];
-          const c=(prev>0 && cur!==undefined)? cur/prev*100 : s.conv;
-          return {nome:s.nome, conv:clampPct(c)};
-        });
-      }
-      if(Array.isArray(r.produtos)) r.produtos.forEach((p,i)=>{ if(i<3) base[k].produtos[i]={qtd:p.qtd||0,ticket:p.ticket||0}; });
+    if(Array.isArray(raw.funnels)){          // formato novo (v2)
+      const funnels=raw.funnels.filter(f=>f&&Array.isArray(f.stages)&&f.stages.length>=1).map(f=>({
+        id:f.id||uid(), nome:f.nome||'Funil', isDefault:!!f.isDefault,
+        fontes:Array.isArray(f.fontes)?f.fontes:[],
+        stages:sanitizeStages(f.stages), produtos:sanitizeProdutos(f.produtos)
+      }));
+      return funnels.length? {funnels} : freshState();
     }
+    // formato antigo (objeto indexado por id): semeia defaults e mescla por id
+    const base=freshState();
+    base.funnels.forEach(f=>{
+      const r=raw[f.id]; if(!r) return;
+      if(Array.isArray(r.stages)) f.stages=sanitizeStages(r.stages);
+      else if(Array.isArray(r.etapas)){
+        const nums=r.etapas;
+        f.stages=f.stages.map((s,i)=> i===0
+          ? {nome:s.nome, val:clamp(nums[0]!==undefined?nums[0]:s.val)}
+          : {nome:s.nome, conv:clampPct((nums[i-1]>0&&nums[i]!==undefined)? nums[i]/nums[i-1]*100 : s.conv)});
+      }
+      if(Array.isArray(r.produtos)) f.produtos=sanitizeProdutos(r.produtos);
+    });
     return base;
   }catch(e){ return freshState(); }
 }
 function save(){ localStorage.setItem(STORE_KEY,JSON.stringify(state)); }
 
 let state=load();
-let current="eventos";
+let current=state.funnels[0].id;
 
 /* ---------- Render: navegação ---------- */
 function renderNav(){
   const nav=document.getElementById('nav');
   nav.innerHTML='';
-  for(const k in FUNNELS){
+  state.funnels.forEach(f=>{
     const b=document.createElement('button');
-    b.className='funnel-btn'+(k===current?' active':'');
-    b.innerHTML=`<span class="dot"></span><span>${FUNNELS[k].nome}<small>${state[k].stages.length} etapas</small></span>`;
-    b.onclick=()=>select(k);
+    b.className='funnel-btn'+(f.id===current?' active':'');
+    b.innerHTML=`<span class="dot"></span><span>${escapeHtml(f.nome)}<small>${f.stages.length} etapas</small></span>
+      <button class="nav-edit" title="Editar funil">✎</button>`;
+    b.addEventListener('click',()=>select(f.id));
+    b.querySelector('.nav-edit').addEventListener('click',e=>{ e.stopPropagation(); openFunnelEditor(f.id); });
     nav.appendChild(b);
-  }
+  });
+  const create=document.createElement('button');
+  create.className='funnel-btn create-btn';
+  create.innerHTML=`<span>+ Criar novo funil</span>`;
+  create.onclick=()=>openFunnelEditor(null);
+  nav.appendChild(create);
+
   const div=document.createElement('div'); div.className='divisor'; nav.appendChild(div);
   const d=document.createElement('button');
-  d.className='dash-btn'+(current==='dash'?' active':'');
+  d.className='dash-btn funnel-btn'+(current==='dash'?' active':'');
   d.innerHTML=`<span class="dot"></span><span>Receita total projetada<small>dashboard consolidado</small></span>`;
   d.onclick=()=>select('dash');
   nav.appendChild(d);
@@ -392,14 +463,15 @@ function select(k){
 // Constrói os elementos do funil UMA vez; a atualização é feita in-place
 // (sem recriar os sliders), o que evita o travamento ao arrastar.
 function buildFunnel(){
-  const f=FUNNELS[current], st=state[current];
+  const f=getFunnel(current);
   document.getElementById('funnelName').textContent=f.nome;
-  document.getElementById('funnelFontes').textContent="Fontes: "+f.fontes.join(" · ");
+  document.getElementById('funnelFontes').textContent= (f.fontes&&f.fontes.length)? "Fontes: "+f.fontes.join(" · ") : "";
 
   const cont=document.getElementById('funnel');
   cont.innerHTML='';
 
-  st.stages.forEach((s,i)=>{
+  f.stages.forEach((s,i)=>{
+    const st=f; // alias p/ trecho abaixo
     const isFinal= i===st.stages.length-1;
     const isTop= i===0;
     const stage=document.createElement('div');
@@ -439,9 +511,9 @@ function buildFunnel(){
   });
 
   const onInput=e=>{
-    const i=+e.target.dataset.i;
-    if(i===0) state[current].stages[i].val=clamp(+e.target.value);
-    else      state[current].stages[i].conv=clampPct(+e.target.value);
+    const i=+e.target.dataset.i, st=getFunnel(current);
+    if(i===0) st.stages[i].val=clamp(+e.target.value);
+    else      st.stages[i].conv=clampPct(+e.target.value);
     save(); updateFunnel(e.target);
   };
   cont.querySelectorAll('.sld').forEach(el=>el.addEventListener('input',onInput));
@@ -480,7 +552,7 @@ function attachDnD(stage){
 // Move a etapa preservando os números absolutos: o novo topo vira o valor
 // absoluto que tinha, e as demais mantêm sua taxa de conversão.
 function reorderStages(from,to){
-  const stages=state[current].stages;
+  const stages=getFunnel(current).stages;
   const abs=computeAbs(stages);
   const absMap=new Map(); stages.forEach((s,idx)=>absMap.set(s,abs[idx]));
   const [moved]=stages.splice(from,1);
@@ -498,18 +570,18 @@ function escapeHtml(s){ return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':
 function addStage(){
   const nome=prompt('Nome da nova etapa (entra como % de conversão da etapa anterior):','Nova etapa');
   if(nome===null) return;
-  state[current].stages.push({nome:(nome.trim()||'Nova etapa'),conv:50});
+  getFunnel(current).stages.push({nome:(nome.trim()||'Nova etapa'),conv:50});
   save(); renderNav(); buildFunnel();
 }
 function renameStage(i){
-  const st=state[current];
+  const st=getFunnel(current);
   const nome=prompt('Editar nome da etapa:',st.stages[i].nome);
   if(nome===null) return;
   st.stages[i].nome=nome.trim()||st.stages[i].nome;
   save(); buildFunnel();
 }
 function removeStage(i){
-  const st=state[current];
+  const st=getFunnel(current);
   if(st.stages.length<=2){ alert('O funil precisa de pelo menos 2 etapas.'); return; }
   if(!confirm('Excluir a etapa "'+st.stages[i].nome+'"?')) return;
   const abs=computeAbs(st.stages);          // guarda absolutos antes de remover
@@ -524,7 +596,7 @@ function removeStage(i){
 // Recalcula números, larguras e percentuais sem recriar os elementos.
 // 'trigger' é o input que disparou (não sobrescrevemos seu valor durante o arraste).
 function updateFunnel(trigger){
-  const st=state[current];
+  const st=getFunnel(current);
   const abs=computeAbs(st.stages);
   const top=abs[0]||0;
   const total=st.stages.length;
@@ -550,7 +622,7 @@ function clampPct(v){ v=+v; v=isNaN(v)?0:v; return Math.max(0,Math.min(100,Math.
 
 /* ---------- Render: produtos ---------- */
 function renderProducts(){
-  const st=state[current];
+  const st=getFunnel(current);
   const cont=document.getElementById('products');
   cont.innerHTML='';
   PRODUTOS.forEach((nome,i)=>{
@@ -577,18 +649,17 @@ function renderProducts(){
     cont.appendChild(d);
   });
   cont.querySelectorAll('input').forEach(el=>el.addEventListener('input',e=>{
-    const i=+e.target.dataset.i, fld=e.target.dataset.f;
-    state[current].produtos[i][fld]=Math.max(0,+e.target.value||0);
+    const i=+e.target.dataset.i, fld=e.target.dataset.f, f=getFunnel(current);
+    f.produtos[i][fld]=Math.max(0,+e.target.value||0);
     save(); renderTotals(); // não re-render inputs p/ não perder o foco
-    // atualiza subtotal local
-    const p=state[current].produtos[i];
+    const p=f.produtos[i];
     e.target.closest('.product').querySelector('.p-sub b').textContent=brl((p.qtd||0)*(p.ticket||0));
   }));
 }
 
 /* ---------- Render: totais ---------- */
 function renderTotals(){
-  const st=state[current];
+  const st=getFunnel(current);
   let total=0,qtd=0;
   st.produtos.forEach(p=>{ total+=(p.qtd||0)*(p.ticket||0); qtd+=(p.qtd||0); });
   document.getElementById('revTotal').textContent=brl(total);
@@ -599,38 +670,33 @@ function renderTotals(){
 function renderAll(){ buildFunnel(); renderProducts(); renderTotals(); }
 
 /* ---------- Dashboard: Receita total projetada ---------- */
-function funnelStats(k){
-  const st=state[k];
-  const abs=computeAbs(st.stages);
+function funnelStats(f){
+  const abs=computeAbs(f.stages);
   const top=abs[0]||0;
-  const vendas=abs.length?abs[abs.length-1]:0;
-  const conv= top>0 ? vendas/top*100 : 0;
   let receita=0, qtd=0;
-  st.produtos.forEach(p=>{ receita+=(p.qtd||0)*(p.ticket||0); qtd+=(p.qtd||0); });
-  return {top,vendas,conv,receita,qtd};
+  f.produtos.forEach(p=>{ receita+=(p.qtd||0)*(p.ticket||0); qtd+=(p.qtd||0); });
+  return {top,receita,qtd};
 }
 const GOAL=500000;
 function renderDash(){
-  const keys=Object.keys(FUNNELS);
-  let totalRev=0,totalLeads=0,totalVendas=0,totalQtd=0;
-  const stats={};
-  keys.forEach(k=>{ const s=funnelStats(k); stats[k]=s; totalRev+=s.receita; totalLeads+=s.top; totalVendas+=s.vendas; totalQtd+=s.qtd; });
+  let totalRev=0,totalLeads=0,totalQtd=0;
+  state.funnels.forEach(f=>{ const s=funnelStats(f); totalRev+=s.receita; totalLeads+=s.top; totalQtd+=s.qtd; });
   document.getElementById('dashRevTop').textContent=brl(totalRev);
 
   const pctGoal= GOAL>0 ? totalRev/GOAL*100 : 0;
 
   const prod=PRODUTOS.map((nome,i)=>{
     let qtd=0,rev=0;
-    keys.forEach(k=>{ const p=state[k].produtos[i]; qtd+=p.qtd||0; rev+=(p.qtd||0)*(p.ticket||0); });
+    state.funnels.forEach(f=>{ const p=f.produtos[i]; qtd+=p.qtd||0; rev+=(p.qtd||0)*(p.ticket||0); });
     return {nome,qtd,rev};
   });
 
-  const rowsFunis=keys.map(k=>{
-    const s=stats[k];
+  const rowsFunis=state.funnels.map(f=>{
+    const s=funnelStats(f);
     const conv= s.top>0 ? s.qtd/s.top*100 : 0;   // conversão do funil = vendas / leads
     const share= totalRev>0 ? s.receita/totalRev*100 : 0;
     return `<tr>
-      <td>${FUNNELS[k].nome}</td>
+      <td>${escapeHtml(f.nome)}</td>
       <td>${num(s.top)}</td>
       <td>${conv.toFixed(1)}%</td>
       <td>${num(s.qtd)}</td>
@@ -670,22 +736,111 @@ function renderDash(){
         </table>
       </div>
       <div class="dash-card dash-products">
-        <h3>Por produto (4 funis)</h3>
+        <h3>Por produto (${state.funnels.length} ${state.funnels.length===1?'funil':'funis'})</h3>
         ${rowsProd}
       </div>
     </div>`;
 }
 
-/* ---------- Reset (restaura etapas padrão e zera produtos) ---------- */
+/* ---------- Reset (restaura etapas e zera produtos) ---------- */
 document.getElementById('reset').onclick=()=>{
-  if(!confirm('Restaurar as etapas padrão deste funil e zerar os produtos?')) return;
-  state[current]=freshFunnel(current);
+  const f=getFunnel(current);
+  if(!confirm('Restaurar este funil ao padrão e zerar os produtos?')) return;
+  const def=DEFAULTS.find(d=>d.id===f.id);
+  f.produtos=PRODUTOS.map(()=>({qtd:0,ticket:0}));
+  if(def) f.stages=defStages(def);                 // funil padrão → etapas originais
+  else { f.stages.forEach((s,i)=> i===0? s.val=1000 : s.conv=50); } // custom → valores neutros
   save(); renderNav(); renderAll();
 };
 document.getElementById('addStage').onclick=addStage;
 
+/* ---------- Modal: criar / editar funil ---------- */
+let editingId=null;
+function addModalStageRow(nome='', orig='new'){
+  const wrap=document.getElementById('mStages');
+  const row=document.createElement('div');
+  row.className='mstage';
+  row.dataset.orig=orig;
+  row.innerHTML=`<span class="idx"></span><input class="ms-name" value="${escapeHtml(nome)}" placeholder="Nome da etapa">
+    <button class="ms-del" type="button" title="Remover">✕</button>`;
+  row.querySelector('.ms-del').addEventListener('click',()=>{ row.remove(); renumberModalStages(); });
+  wrap.appendChild(row);
+  renumberModalStages();
+}
+function renumberModalStages(){
+  document.querySelectorAll('#mStages .mstage').forEach((r,i)=>{
+    r.querySelector('.idx').textContent=(i+1);
+    r.querySelector('.ms-name').placeholder = i===0 ? 'Etapa de entrada (leads)' : 'Nome da etapa';
+  });
+}
+function openFunnelEditor(id){
+  editingId=id;
+  const wrap=document.getElementById('mStages'); wrap.innerHTML='';
+  const del=document.getElementById('mDelete');
+  if(id){
+    const f=getFunnel(id);
+    document.getElementById('modalTitle').textContent='Editar funil';
+    document.getElementById('mFunnelName').value=f.nome;
+    f.stages.forEach((s,i)=>addModalStageRow(s.nome,String(i)));
+    del.style.display = f.isDefault ? 'none' : '';   // padrões não podem ser excluídos
+  }else{
+    document.getElementById('modalTitle').textContent='Criar novo funil';
+    document.getElementById('mFunnelName').value='';
+    addModalStageRow('Entrada de leads');
+    addModalStageRow('Qualificação');
+    addModalStageRow('Vendas');
+    del.style.display='none';
+  }
+  document.getElementById('modal').style.display='flex';
+  document.getElementById('mFunnelName').focus();
+}
+function closeModal(){ document.getElementById('modal').style.display='none'; editingId=null; }
+
+function saveFunnelEditor(){
+  const nome=document.getElementById('mFunnelName').value.trim();
+  if(!nome){ alert('Dê um nome ao funil.'); return; }
+  const rows=[...document.querySelectorAll('#mStages .mstage')];
+  const stagesInfo=rows.map(r=>({nome:r.querySelector('.ms-name').value.trim(), orig:r.dataset.orig}))
+                       .filter(s=>s.nome);
+  if(stagesInfo.length<2){ alert('O funil precisa de pelo menos 2 etapas.'); return; }
+
+  if(editingId){
+    const f=getFunnel(editingId);
+    const old=f.stages;
+    const newStages=stagesInfo.map(s=>{
+      if(s.orig!=='new' && old[+s.orig]) return {...old[+s.orig], nome:s.nome};
+      return {nome:s.nome, conv:50};
+    });
+    normalizeStages(newStages);
+    f.nome=nome; f.stages=newStages;
+    save(); renderNav();
+    if(current===editingId) renderAll();
+  }else{
+    const f={ id:uid(), nome, isDefault:false, fontes:[],
+      stages:normalizeStages(stagesInfo.map(s=>({nome:s.nome}))),
+      produtos:PRODUTOS.map(()=>({qtd:0,ticket:0})) };
+    state.funnels.push(f);
+    save(); select(f.id);
+  }
+  closeModal();
+}
+function deleteFunnel(){
+  if(!editingId) return;
+  const f=getFunnel(editingId);
+  if(f.isDefault){ alert('Funis padrão não podem ser excluídos.'); return; }
+  if(!confirm('Excluir o funil "'+f.nome+'"? Esta ação não pode ser desfeita.')) return;
+  state.funnels=state.funnels.filter(x=>x.id!==editingId);
+  if(current===editingId) current=state.funnels[0].id;
+  save(); closeModal(); select(current);
+}
+document.getElementById('mAddStage').onclick=()=>addModalStageRow();
+document.getElementById('mCancel').onclick=closeModal;
+document.getElementById('mSave').onclick=saveFunnelEditor;
+document.getElementById('mDelete').onclick=deleteFunnel;
+document.getElementById('modal').addEventListener('click',e=>{ if(e.target.id==='modal') closeModal(); });
+
 renderNav();
-renderAll();
+select(current);
 </script>
 </body>
 </html>
