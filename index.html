@@ -87,6 +87,12 @@
     border:2px solid #c96a16;
     box-shadow:0 3px 10px rgba(200,100,20,.35);
   }
+  .bar .s-left{display:flex;align-items:center;gap:8px;flex:1;min-width:0}
+  .bar .s-drag{cursor:grab;background:rgba(255,255,255,.28);color:#fff;border:none;border-radius:5px;width:20px;height:22px;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;line-height:1}
+  .bar .s-drag:hover{background:rgba(0,0,0,.30)}
+  .bar .s-drag:active{cursor:grabbing}
+  .stage.dragging{opacity:.35}
+  .stage.drag-over .bar{outline:2px dashed var(--preto);outline-offset:3px}
   .bar .s-name{font-size:12.5px;font-weight:700;white-space:nowrap;text-shadow:0 1px 2px rgba(0,0,0,.30);overflow:hidden;text-overflow:ellipsis}
   .bar .s-right{display:flex;align-items:center;gap:6px;flex-shrink:0;margin-left:10px}
   .bar .s-num{font-size:13px;font-weight:800;white-space:nowrap;text-shadow:0 1px 2px rgba(0,0,0,.25)}
@@ -405,10 +411,14 @@ function buildFunnel(){
       : `<input type="range" min="0" max="100" step="0.1" data-i="${i}" class="sld">
          <input type="number" min="0" max="100" step="0.1" data-i="${i}" class="numf">
          <span class="unit">%</span>`;
+    stage.dataset.i=i;
     stage.innerHTML=`
       <div class="bar-wrap">
         <div class="bar">
-          <span class="s-name">${isFinal?'🏆 ':''}${escapeHtml(s.nome)}</span>
+          <span class="s-left">
+            <button class="s-drag" draggable="true" title="Arraste para reordenar">⠿</button>
+            <span class="s-name">${isFinal?'🏆 ':''}${escapeHtml(s.nome)}</span>
+          </span>
           <span class="s-right">
             <span class="s-num"></span>
             <span class="s-actions">
@@ -438,8 +448,48 @@ function buildFunnel(){
   cont.querySelectorAll('.numf').forEach(el=>el.addEventListener('input',onInput));
   cont.querySelectorAll('.s-edit').forEach(el=>el.addEventListener('click',e=>renameStage(+e.currentTarget.dataset.i)));
   cont.querySelectorAll('.s-del').forEach(el=>el.addEventListener('click',e=>removeStage(+e.currentTarget.dataset.i)));
+  cont.querySelectorAll('#funnel .stage').forEach((stage)=>attachDnD(stage));
 
   updateFunnel();
+}
+
+/* ---------- Reordenar etapas (drag and drop) ---------- */
+let dragFrom=null;
+function attachDnD(stage){
+  const i=+stage.dataset.i;
+  const handle=stage.querySelector('.s-drag');
+  handle.addEventListener('dragstart',e=>{
+    dragFrom=i; stage.classList.add('dragging');
+    e.dataTransfer.effectAllowed='move';
+    try{ e.dataTransfer.setData('text/plain',String(i)); }catch(_){}
+  });
+  handle.addEventListener('dragend',()=>{
+    stage.classList.remove('dragging');
+    document.querySelectorAll('#funnel .stage').forEach(s=>s.classList.remove('drag-over'));
+    dragFrom=null;
+  });
+  stage.addEventListener('dragover',e=>{ if(dragFrom!==null){ e.preventDefault(); e.dataTransfer.dropEffect='move'; } });
+  stage.addEventListener('dragenter',()=>{ if(dragFrom!==null && i!==dragFrom) stage.classList.add('drag-over'); });
+  stage.addEventListener('dragleave',()=>stage.classList.remove('drag-over'));
+  stage.addEventListener('drop',e=>{
+    e.preventDefault(); stage.classList.remove('drag-over');
+    if(dragFrom===null || dragFrom===i) return;
+    reorderStages(dragFrom,i); dragFrom=null;
+  });
+}
+// Move a etapa preservando os números absolutos: o novo topo vira o valor
+// absoluto que tinha, e as demais mantêm sua taxa de conversão.
+function reorderStages(from,to){
+  const stages=state[current].stages;
+  const abs=computeAbs(stages);
+  const absMap=new Map(); stages.forEach((s,idx)=>absMap.set(s,abs[idx]));
+  const [moved]=stages.splice(from,1);
+  stages.splice(to,0,moved);
+  stages.forEach((s,idx)=>{
+    if(idx===0){ s.val=clamp(absMap.get(s)!==undefined?absMap.get(s):(s.val||0)); delete s.conv; }
+    else { if(s.conv===undefined) s.conv=50; delete s.val; }
+  });
+  save(); buildFunnel();
 }
 
 function escapeHtml(s){ return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
@@ -577,15 +627,18 @@ function renderDash(){
 
   const rowsFunis=keys.map(k=>{
     const s=stats[k];
+    const conv= s.top>0 ? s.qtd/s.top*100 : 0;   // conversão do funil = vendas / leads
+    const share= totalRev>0 ? s.receita/totalRev*100 : 0;
     return `<tr>
       <td>${FUNNELS[k].nome}</td>
       <td>${num(s.top)}</td>
-      <td>${s.conv.toFixed(1)}%</td>
-      <td>${num(s.vendas)}</td>
+      <td>${conv.toFixed(1)}%</td>
       <td>${num(s.qtd)}</td>
-      <td><span class="rev">${brl(s.receita)}</span><div class="mini-bar"><i style="width:${totalRev>0?(s.receita/totalRev*100):0}%"></i></div></td>
+      <td><span class="rev">${brl(s.receita)}</span></td>
+      <td>${share.toFixed(1)}%<div class="mini-bar"><i style="width:${share}%"></i></div></td>
     </tr>`;
   }).join('');
+  const convTot= totalLeads>0 ? totalQtd/totalLeads*100 : 0;
 
   const rowsProd=prod.map(p=>{
     const parts=p.nome.split(' '), tier=parts[parts.length-1], base=parts.slice(0,-1).join(' ');
@@ -609,10 +662,10 @@ function renderDash(){
       <div class="dash-card dash-funnels">
         <h3>Por funil</h3>
         <table class="dash-tbl">
-          <thead><tr><th>Funil</th><th>Leads</th><th>Conv. total</th><th>Vendas (funil)</th><th>Vendas lançadas</th><th>Receita</th></tr></thead>
+          <thead><tr><th>Funil</th><th>Leads</th><th>Conversão</th><th>Vendas</th><th>Receita</th><th>Participação</th></tr></thead>
           <tbody>
             ${rowsFunis}
-            <tr class="tot"><td>TOTAL</td><td>${num(totalLeads)}</td><td>${totalLeads>0?(totalVendas/totalLeads*100).toFixed(1):'0.0'}%</td><td>${num(totalVendas)}</td><td>${num(totalQtd)}</td><td><span class="rev">${brl(totalRev)}</span></td></tr>
+            <tr class="tot"><td>TOTAL</td><td>${num(totalLeads)}</td><td>${convTot.toFixed(1)}%</td><td>${num(totalQtd)}</td><td><span class="rev">${brl(totalRev)}</span></td><td>100%</td></tr>
           </tbody>
         </table>
       </div>
