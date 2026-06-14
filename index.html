@@ -141,6 +141,45 @@
   .total-box .sales{font-size:11px;color:#bbb;margin-top:6px}
   .total-box .sales b{color:#fff}
 
+  /* ---------- Percentual no controle ---------- */
+  .stage .ctrl .row1 .unit{font-size:11px;color:var(--cinza);font-weight:700;width:14px;text-align:center}
+
+  /* ---------- Sidebar: divisor + item Dash ---------- */
+  .nav .divisor{height:1px;background:#333;margin:14px 2px 6px}
+  .nav .dash-btn{border-color:var(--laranja-claro)}
+  .nav .dash-btn .dot{background:var(--laranja-claro)}
+
+  /* ---------- Dashboard ---------- */
+  #dash{display:flex;flex-direction:column;gap:14px;height:calc(100vh - 110px)}
+  .dash-goal{background:var(--branco);border-radius:14px;box-shadow:var(--sombra);padding:14px 18px}
+  .dash-goal .gtop{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}
+  .dash-goal .gtop .gl{font-size:12px;text-transform:uppercase;letter-spacing:1.5px;color:var(--cinza);font-weight:700}
+  .dash-goal .gtop .gr{font-size:13px;color:var(--cinza)}
+  .dash-goal .gtop .gr b{color:var(--laranja);font-size:15px}
+  .dash-goal .track{height:16px;background:#eee;border-radius:9px;overflow:hidden}
+  .dash-goal .fill{height:100%;background:linear-gradient(90deg,#f6a93b,#e67e22);border-radius:9px;transition:width .3s;min-width:2px}
+  .dash-cols{display:flex;gap:14px;flex:1;min-height:0}
+  .dash-card{background:var(--branco);border-radius:14px;box-shadow:var(--sombra);padding:16px 18px;display:flex;flex-direction:column}
+  .dash-card h3{font-size:12px;text-transform:uppercase;letter-spacing:1.5px;color:var(--cinza);margin-bottom:12px}
+  .dash-funnels{flex:2;min-width:0}
+  .dash-products{flex:1;min-width:0}
+  table.dash-tbl{width:100%;border-collapse:collapse;font-size:13px}
+  table.dash-tbl th{text-align:right;font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--cinza);padding:6px 8px;border-bottom:2px solid var(--cinza-claro)}
+  table.dash-tbl th:first-child{text-align:left}
+  table.dash-tbl td{padding:9px 8px;border-bottom:1px solid #f0f0f0;text-align:right;font-variant-numeric:tabular-nums}
+  table.dash-tbl td:first-child{text-align:left;font-weight:700}
+  table.dash-tbl td .rev{color:var(--laranja);font-weight:800}
+  table.dash-tbl tr.tot td{border-top:2px solid var(--preto);border-bottom:none;font-weight:800;padding-top:11px}
+  table.dash-tbl tr.tot td .rev{font-size:15px}
+  .mini-bar{height:7px;background:#eee;border-radius:5px;overflow:hidden;margin-top:5px}
+  .mini-bar i{display:block;height:100%;background:var(--laranja);border-radius:5px}
+  .prod-row{border:1px solid var(--cinza-claro);border-radius:11px;padding:11px 13px;margin-bottom:11px}
+  .prod-row .pr-top{display:flex;justify-content:space-between;align-items:baseline}
+  .prod-row .pr-name{font-size:12px;font-weight:800}
+  .prod-row .pr-name b{color:var(--laranja)}
+  .prod-row .pr-rev{font-size:15px;font-weight:800;color:var(--laranja)}
+  .prod-row .pr-meta{font-size:11px;color:var(--cinza);margin-top:3px;display:flex;justify-content:space-between}
+
   @media (max-height:720px){
     .bar{height:clamp(28px,5vh,42px)}
     .topbar .ftitle h2{font-size:22px}
@@ -163,41 +202,60 @@
   </aside>
 
   <main class="main">
-    <div class="topbar">
-      <div class="ftitle">
-        <div class="src">FUNIL SELECIONADO</div>
-        <h2 id="funnelName"></h2>
-        <div class="fontes" id="funnelFontes"></div>
+    <!-- ===== Visão FUNIL ===== -->
+    <div id="funnelView">
+      <div class="topbar">
+        <div class="ftitle">
+          <div class="src">FUNIL SELECIONADO</div>
+          <h2 id="funnelName"></h2>
+          <div class="fontes" id="funnelFontes"></div>
+        </div>
+        <div class="rev-badge">
+          <div class="lbl">RECEITA PROJETADA</div>
+          <div class="val" id="revTop">R$ 0</div>
+        </div>
       </div>
-      <div class="rev-badge">
-        <div class="lbl">RECEITA PROJETADA</div>
-        <div class="val" id="revTop">R$ 0</div>
+
+      <div class="content">
+        <section class="funnel-card">
+          <div class="funnel-head">
+            <h3>Etapas do funil</h3>
+            <div class="head-right">
+              <span class="hint">topo = leads de entrada • demais etapas = % de conversão (cascata) • ✎ editar / ✕ excluir</span>
+              <button class="add-stage" id="addStage">+ Etapa</button>
+            </div>
+          </div>
+          <div class="funnel" id="funnel"></div>
+        </section>
+
+        <aside class="side-panel">
+          <div class="panel">
+            <h3>Produtos &amp; ticket</h3>
+            <div id="products"></div>
+          </div>
+          <div class="total-box">
+            <div class="lbl">RECEITA DESTE FUNIL</div>
+            <div class="val" id="revTotal">R$ 0</div>
+            <div class="sales">Vendas no funil: <b id="funnelSales">0</b> · Vendas lançadas: <b id="prodQty">0</b></div>
+          </div>
+        </aside>
       </div>
     </div>
 
-    <div class="content">
-      <section class="funnel-card">
-        <div class="funnel-head">
-          <h3>Etapas do funil</h3>
-          <div class="head-right">
-            <span class="hint">arraste • 0–10.000 • passe o mouse na etapa p/ ✎ editar / ✕ excluir</span>
-            <button class="add-stage" id="addStage">+ Etapa</button>
-          </div>
+    <!-- ===== Visão DASH (Receita total projetada) ===== -->
+    <div id="dashView" style="display:none">
+      <div class="topbar">
+        <div class="ftitle">
+          <div class="src">DASHBOARD</div>
+          <h2>Receita total projetada</h2>
+          <div class="fontes">Somatório consolidado dos 4 funis do Quadrado Mágico 500k</div>
         </div>
-        <div class="funnel" id="funnel"></div>
-      </section>
-
-      <aside class="side-panel">
-        <div class="panel">
-          <h3>Produtos &amp; ticket</h3>
-          <div id="products"></div>
+        <div class="rev-badge">
+          <div class="lbl">RECEITA TOTAL</div>
+          <div class="val" id="dashRevTop">R$ 0</div>
         </div>
-        <div class="total-box">
-          <div class="lbl">RECEITA TOTAL PROJETADA</div>
-          <div class="val" id="revTotal">R$ 0</div>
-          <div class="sales">Vendas no funil: <b id="funnelSales">0</b> · Vendas lançadas: <b id="prodQty">0</b></div>
-        </div>
-      </aside>
+      </div>
+      <div id="dash"></div>
     </div>
   </main>
 </div>
@@ -238,11 +296,16 @@ const brl = n => new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL',
 const num = n => new Intl.NumberFormat('pt-BR').format(Math.round(n||0));
 
 /* ---------- Estado ---------- */
-// Cada funil guarda suas próprias etapas (nome + valor), o que permite
-// incluir/excluir/editar etapas sem depender dos padrões fixos.
+// Etapa 0 = leads de entrada (absoluto, val). Demais etapas = taxa de
+// conversão sobre a etapa anterior (conv, em %). Os absolutos são derivados.
 function freshFunnel(k){
+  const d=FUNNELS[k].defaults;
   return {
-    stages:FUNNELS[k].etapas.map((nome,i)=>({nome,val:FUNNELS[k].defaults[i]})),
+    stages:FUNNELS[k].etapas.map((nome,i)=>{
+      if(i===0) return {nome,val:d[0]};
+      const c = d[i-1]>0 ? (d[i]/d[i-1]*100) : 0;
+      return {nome, conv:Math.round(c*10)/10};
+    }),
     produtos:PRODUTOS.map(()=>({qtd:0,ticket:0}))
   };
 }
@@ -251,6 +314,14 @@ function freshState(){
   for(const k in FUNNELS) s[k]=freshFunnel(k);
   return s;
 }
+// Calcula os valores absolutos de cada etapa a partir do topo + conversões.
+function computeAbs(stages){
+  const abs=[];
+  stages.forEach((s,i)=>{
+    abs[i]= i===0 ? clamp(s.val) : Math.round((abs[i-1]||0)*clampPct(s.conv)/100);
+  });
+  return abs;
+}
 function load(){
   try{
     const raw=JSON.parse(localStorage.getItem(STORE_KEY));
@@ -258,11 +329,19 @@ function load(){
     const base=freshState();
     for(const k in base){
       const r=raw[k]; if(!r) continue;
-      if(Array.isArray(r.stages)){            // formato novo
-        const st=r.stages.filter(s=>s&&typeof s.nome==='string').map(s=>({nome:s.nome,val:clamp(s.val)}));
-        if(st.length>=1) base[k].stages=st;
-      }else if(Array.isArray(r.etapas)){       // formato antigo (só números por índice)
-        r.etapas.forEach((v,i)=>{ if(i<base[k].stages.length) base[k].stages[i].val=clamp(v); });
+      if(Array.isArray(r.stages)){            // formato novo (val no topo, conv nas demais)
+        const st=r.stages.filter(s=>s&&typeof s.nome==='string').map((s,i)=>
+          i===0 ? {nome:s.nome, val: s.val!==undefined?clamp(s.val):0}
+                : {nome:s.nome, conv: s.conv!==undefined?clampPct(s.conv):0});
+        if(st.length>=1){ if(st[0].val===undefined) st[0]={nome:st[0].nome,val:0}; base[k].stages=st; }
+      }else if(Array.isArray(r.etapas)){       // formato bem antigo (só números por índice) → vira conversões
+        const nums=r.etapas;
+        base[k].stages=base[k].stages.map((s,i)=>{
+          if(i===0) return {nome:s.nome, val: clamp(nums[0]!==undefined?nums[0]:s.val)};
+          const prev=nums[i-1], cur=nums[i];
+          const c=(prev>0 && cur!==undefined)? cur/prev*100 : s.conv;
+          return {nome:s.nome, conv:clampPct(c)};
+        });
       }
       if(Array.isArray(r.produtos)) r.produtos.forEach((p,i)=>{ if(i<3) base[k].produtos[i]={qtd:p.qtd||0,ticket:p.ticket||0}; });
     }
@@ -282,9 +361,25 @@ function renderNav(){
     const b=document.createElement('button');
     b.className='funnel-btn'+(k===current?' active':'');
     b.innerHTML=`<span class="dot"></span><span>${FUNNELS[k].nome}<small>${state[k].stages.length} etapas</small></span>`;
-    b.onclick=()=>{ current=k; renderNav(); renderAll(); };
+    b.onclick=()=>select(k);
     nav.appendChild(b);
   }
+  const div=document.createElement('div'); div.className='divisor'; nav.appendChild(div);
+  const d=document.createElement('button');
+  d.className='dash-btn'+(current==='dash'?' active':'');
+  d.innerHTML=`<span class="dot"></span><span>Receita total projetada<small>dashboard consolidado</small></span>`;
+  d.onclick=()=>select('dash');
+  nav.appendChild(d);
+}
+
+function select(k){
+  current=k;
+  const isDash= k==='dash';
+  document.getElementById('funnelView').style.display= isDash?'none':'';
+  document.getElementById('dashView').style.display= isDash?'':'none';
+  document.getElementById('reset').style.display= isDash?'none':'';
+  renderNav();
+  if(isDash) renderDash(); else renderAll();
 }
 
 /* ---------- Render: funil ---------- */
@@ -300,8 +395,16 @@ function buildFunnel(){
 
   st.stages.forEach((s,i)=>{
     const isFinal= i===st.stages.length-1;
+    const isTop= i===0;
     const stage=document.createElement('div');
     stage.className='stage'+(isFinal?' final':'');
+    const ctrl = isTop
+      ? `<input type="range" min="0" max="${MAX}" step="10" data-i="${i}" class="sld">
+         <input type="number" min="0" max="${MAX}" step="10" data-i="${i}" class="numf">
+         <span class="unit">leads</span>`
+      : `<input type="range" min="0" max="100" step="0.1" data-i="${i}" class="sld">
+         <input type="number" min="0" max="100" step="0.1" data-i="${i}" class="numf">
+         <span class="unit">%</span>`;
     stage.innerHTML=`
       <div class="bar-wrap">
         <div class="bar">
@@ -316,10 +419,7 @@ function buildFunnel(){
         </div>
       </div>
       <div class="ctrl">
-        <div class="row1">
-          <input type="range" min="0" max="${MAX}" step="10" data-i="${i}" class="sld">
-          <input type="number" min="0" max="${MAX}" data-i="${i}" class="numf">
-        </div>
+        <div class="row1">${ctrl}</div>
         <div class="meta">
           <span class="conv"></span>
           <span class="pct"></span>
@@ -328,14 +428,14 @@ function buildFunnel(){
     cont.appendChild(stage);
   });
 
-  cont.querySelectorAll('.sld').forEach(el=>el.addEventListener('input',e=>{
-    const i=+e.target.dataset.i; state[current].stages[i].val=clamp(+e.target.value);
+  const onInput=e=>{
+    const i=+e.target.dataset.i;
+    if(i===0) state[current].stages[i].val=clamp(+e.target.value);
+    else      state[current].stages[i].conv=clampPct(+e.target.value);
     save(); updateFunnel(e.target);
-  }));
-  cont.querySelectorAll('.numf').forEach(el=>el.addEventListener('input',e=>{
-    const i=+e.target.dataset.i; state[current].stages[i].val=clamp(+e.target.value);
-    save(); updateFunnel(e.target);
-  }));
+  };
+  cont.querySelectorAll('.sld').forEach(el=>el.addEventListener('input',onInput));
+  cont.querySelectorAll('.numf').forEach(el=>el.addEventListener('input',onInput));
   cont.querySelectorAll('.s-edit').forEach(el=>el.addEventListener('click',e=>renameStage(+e.currentTarget.dataset.i)));
   cont.querySelectorAll('.s-del').forEach(el=>el.addEventListener('click',e=>removeStage(+e.currentTarget.dataset.i)));
 
@@ -346,9 +446,9 @@ function escapeHtml(s){ return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':
 
 /* ---------- Incluir / excluir / editar etapas ---------- */
 function addStage(){
-  const nome=prompt('Nome da nova etapa:','Nova etapa');
+  const nome=prompt('Nome da nova etapa (entra como % de conversão da etapa anterior):','Nova etapa');
   if(nome===null) return;
-  state[current].stages.push({nome:(nome.trim()||'Nova etapa'),val:0});
+  state[current].stages.push({nome:(nome.trim()||'Nova etapa'),conv:50});
   save(); renderNav(); buildFunnel();
 }
 function renameStage(i){
@@ -362,7 +462,12 @@ function removeStage(i){
   const st=state[current];
   if(st.stages.length<=2){ alert('O funil precisa de pelo menos 2 etapas.'); return; }
   if(!confirm('Excluir a etapa "'+st.stages[i].nome+'"?')) return;
+  const abs=computeAbs(st.stages);          // guarda absolutos antes de remover
   st.stages.splice(i,1);
+  // se removeu o topo, a nova 1ª etapa precisa virar absoluta (leads de entrada)
+  if(i===0 && st.stages[0] && st.stages[0].val===undefined){
+    st.stages[0]={nome:st.stages[0].nome, val:clamp(abs[1]||0)};
+  }
   save(); renderNav(); buildFunnel();
 }
 
@@ -370,26 +475,28 @@ function removeStage(i){
 // 'trigger' é o input que disparou (não sobrescrevemos seu valor durante o arraste).
 function updateFunnel(trigger){
   const st=state[current];
-  const top=st.stages[0]?st.stages[0].val:0;
+  const abs=computeAbs(st.stages);
+  const top=abs[0]||0;
   const total=st.stages.length;
   document.querySelectorAll('#funnel .stage').forEach((stage,i)=>{
-    const val=st.stages[i].val;
+    const val=abs[i];
     const pctTop= top>0 ? (val/top*100) : 0;
-    const prev= i>0 ? st.stages[i-1].val : null;
-    const conv= (prev && prev>0) ? (val/prev*100) : (i===0?100:0);
+    const conv= i===0 ? 100 : clampPct(st.stages[i].conv);
     const width= 30 + 0.7*Math.max(0,Math.min(100,pctTop)); // 30%..100% da faixa
     const bar=stage.querySelector('.bar');
     bar.style.width=width+'%';
     stage.querySelector('.s-num').textContent=num(val);
-    stage.querySelector('.conv').textContent= i===0 ? 'Topo do funil' : '↓ '+conv.toFixed(1)+'%';
-    stage.querySelector('.pct').textContent= pctTop.toFixed(1)+'% do topo';
+    stage.querySelector('.conv').textContent= i===0 ? 'Topo do funil' : '↓ '+conv.toFixed(1)+'% da anterior';
+    stage.querySelector('.pct').textContent= i===0 ? 'leads de entrada' : pctTop.toFixed(1)+'% do topo';
     const sld=stage.querySelector('.sld'), numf=stage.querySelector('.numf');
-    if(sld!==trigger) sld.value=val;
-    if(numf!==trigger) numf.value=val;
+    const v= i===0 ? val : conv;
+    if(sld!==trigger) sld.value=v;
+    if(numf!==trigger) numf.value=v;
   });
-  document.getElementById('funnelSales').textContent=num(total?st.stages[total-1].val:0);
+  document.getElementById('funnelSales').textContent=num(total?abs[total-1]:0);
 }
-function clamp(v){ v=isNaN(v)?0:v; return Math.max(0,Math.min(MAX,Math.round(v))); }
+function clamp(v){ v=+v; v=isNaN(v)?0:v; return Math.max(0,Math.min(MAX,Math.round(v))); }
+function clampPct(v){ v=+v; v=isNaN(v)?0:v; return Math.max(0,Math.min(100,Math.round(v*10)/10)); }
 
 /* ---------- Render: produtos ---------- */
 function renderProducts(){
@@ -440,6 +547,81 @@ function renderTotals(){
 }
 
 function renderAll(){ buildFunnel(); renderProducts(); renderTotals(); }
+
+/* ---------- Dashboard: Receita total projetada ---------- */
+function funnelStats(k){
+  const st=state[k];
+  const abs=computeAbs(st.stages);
+  const top=abs[0]||0;
+  const vendas=abs.length?abs[abs.length-1]:0;
+  const conv= top>0 ? vendas/top*100 : 0;
+  let receita=0, qtd=0;
+  st.produtos.forEach(p=>{ receita+=(p.qtd||0)*(p.ticket||0); qtd+=(p.qtd||0); });
+  return {top,vendas,conv,receita,qtd};
+}
+const GOAL=500000;
+function renderDash(){
+  const keys=Object.keys(FUNNELS);
+  let totalRev=0,totalLeads=0,totalVendas=0,totalQtd=0;
+  const stats={};
+  keys.forEach(k=>{ const s=funnelStats(k); stats[k]=s; totalRev+=s.receita; totalLeads+=s.top; totalVendas+=s.vendas; totalQtd+=s.qtd; });
+  document.getElementById('dashRevTop').textContent=brl(totalRev);
+
+  const pctGoal= GOAL>0 ? totalRev/GOAL*100 : 0;
+
+  const prod=PRODUTOS.map((nome,i)=>{
+    let qtd=0,rev=0;
+    keys.forEach(k=>{ const p=state[k].produtos[i]; qtd+=p.qtd||0; rev+=(p.qtd||0)*(p.ticket||0); });
+    return {nome,qtd,rev};
+  });
+
+  const rowsFunis=keys.map(k=>{
+    const s=stats[k];
+    return `<tr>
+      <td>${FUNNELS[k].nome}</td>
+      <td>${num(s.top)}</td>
+      <td>${s.conv.toFixed(1)}%</td>
+      <td>${num(s.vendas)}</td>
+      <td>${num(s.qtd)}</td>
+      <td><span class="rev">${brl(s.receita)}</span><div class="mini-bar"><i style="width:${totalRev>0?(s.receita/totalRev*100):0}%"></i></div></td>
+    </tr>`;
+  }).join('');
+
+  const rowsProd=prod.map(p=>{
+    const parts=p.nome.split(' '), tier=parts[parts.length-1], base=parts.slice(0,-1).join(' ');
+    const share= totalRev>0 ? p.rev/totalRev*100 : 0;
+    return `<div class="prod-row">
+      <div class="pr-top"><span class="pr-name">${base} <b>${tier}</b></span><span class="pr-rev">${brl(p.rev)}</span></div>
+      <div class="pr-meta"><span>${num(p.qtd)} vendas</span><span>${share.toFixed(1)}% da receita</span></div>
+      <div class="mini-bar"><i style="width:${share}%"></i></div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('dash').innerHTML=`
+    <div class="dash-goal">
+      <div class="gtop">
+        <span class="gl">Meta — R$ 500.000</span>
+        <span class="gr"><b>${brl(totalRev)}</b> &nbsp;·&nbsp; ${pctGoal.toFixed(1)}% da meta &nbsp;·&nbsp; faltam ${brl(Math.max(0,GOAL-totalRev))}</span>
+      </div>
+      <div class="track"><div class="fill" style="width:${Math.min(100,pctGoal)}%"></div></div>
+    </div>
+    <div class="dash-cols">
+      <div class="dash-card dash-funnels">
+        <h3>Por funil</h3>
+        <table class="dash-tbl">
+          <thead><tr><th>Funil</th><th>Leads</th><th>Conv. total</th><th>Vendas (funil)</th><th>Vendas lançadas</th><th>Receita</th></tr></thead>
+          <tbody>
+            ${rowsFunis}
+            <tr class="tot"><td>TOTAL</td><td>${num(totalLeads)}</td><td>${totalLeads>0?(totalVendas/totalLeads*100).toFixed(1):'0.0'}%</td><td>${num(totalVendas)}</td><td>${num(totalQtd)}</td><td><span class="rev">${brl(totalRev)}</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="dash-card dash-products">
+        <h3>Por produto (4 funis)</h3>
+        ${rowsProd}
+      </div>
+    </div>`;
+}
 
 /* ---------- Reset (restaura etapas padrão e zera produtos) ---------- */
 document.getElementById('reset').onclick=()=>{
