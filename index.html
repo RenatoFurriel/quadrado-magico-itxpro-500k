@@ -782,7 +782,7 @@ function openFunnelEditor(id){
     document.getElementById('modalTitle').textContent='Editar funil';
     document.getElementById('mFunnelName').value=f.nome;
     f.stages.forEach((s,i)=>addModalStageRow(s.nome,String(i)));
-    del.style.display = f.isDefault ? 'none' : '';   // padrões não podem ser excluídos
+    del.style.display = state.funnels.length>1 ? '' : 'none';  // só não exclui se for o único
   }else{
     document.getElementById('modalTitle').textContent='Criar novo funil';
     document.getElementById('mFunnelName').value='';
@@ -827,7 +827,7 @@ function saveFunnelEditor(){
 function deleteFunnel(){
   if(!editingId) return;
   const f=getFunnel(editingId);
-  if(f.isDefault){ alert('Funis padrão não podem ser excluídos.'); return; }
+  if(state.funnels.length<=1){ alert('Deve existir pelo menos um funil.'); return; }
   if(!confirm('Excluir o funil "'+f.nome+'"? Esta ação não pode ser desfeita.')) return;
   state.funnels=state.funnels.filter(x=>x.id!==editingId);
   if(current===editingId) current=state.funnels[0].id;
