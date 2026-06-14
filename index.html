@@ -91,6 +91,9 @@
   .stage .ctrl .meta{display:flex;justify-content:space-between;font-size:10.5px;color:var(--cinza);padding:0 2px}
   .stage .ctrl .meta .pct{font-weight:700;color:var(--preto)}
   .stage .ctrl .meta .conv{color:var(--laranja);font-weight:600}
+  .stage.final .bar{box-shadow:0 0 0 2px var(--preto),0 4px 12px rgba(230,126,34,.45)}
+  .stage.final .bar .s-name{font-weight:800;letter-spacing:.5px}
+  .stage.final .bar .s-num{font-size:14px}
 
   .results{display:flex;gap:10px;margin-top:10px;padding-top:12px;border-top:1px dashed var(--cinza-claro)}
   .result{flex:1;text-align:center;border:1.5px solid var(--cinza-claro);border-radius:10px;padding:8px 4px}
@@ -163,7 +166,6 @@
           <span class="hint">arraste os controles • 0 a 10.000 leads • % relativo ao topo</span>
         </div>
         <div class="funnel" id="funnel"></div>
-        <div class="results" id="results"></div>
       </section>
 
       <aside class="side-panel">
@@ -187,30 +189,26 @@ const FUNNELS = {
   eventos: {
     nome:"EVENTOS",
     fontes:["Comunidade","Grupos de eventos anteriores","LinkedIn"],
-    etapas:["Eventos","Aplicação","Agendamento","Ligação de filtragem","Call de Análise e vendas"],
-    resultados:["Fup","Ganho","Perdido"], winIndex:1,
-    defaults:[10000,3000,1500,800,400]
+    etapas:["Eventos","Aplicação","Agendamento","Ligação de filtragem","Call de Análise e vendas","Vendas"],
+    defaults:[10000,3000,1500,800,400,200]
   },
   assessment: {
     nome:"ASSESSMENT",
     fontes:["NPS","Novos Membros da Comunidade"],
-    etapas:["Assessment (Base Interna)","Escolha de perfil","Abertura via WhatsApp","Ligação de qualificação","Call de Assessment e vendas"],
-    resultados:["Fup","Venda","Perdido"], winIndex:1,
-    defaults:[5000,2500,1500,900,500]
+    etapas:["Assessment (Base Interna)","Escolha de perfil","Abertura via WhatsApp","Ligação de qualificação","Call de Assessment e vendas","Vendas"],
+    defaults:[5000,2500,1500,900,500,250]
   },
   sht: {
     nome:"SHT",
     fontes:["Base completa, exceto alunos"],
-    etapas:["SHT","Aplicação","Agendamento","Ligação de filtragem","Call de Análise e vendas"],
-    resultados:["Fup","Ganho","Perdido"], winIndex:1,
-    defaults:[8000,2400,1200,700,350]
+    etapas:["SHT","Aplicação","Agendamento","Ligação de filtragem","Call de Análise e vendas","Vendas"],
+    defaults:[8000,2400,1200,700,350,175]
   },
   prospeccao: {
     nome:"PROSPECÇÃO",
     fontes:["LinkedIn","Instagram"],
-    etapas:["Prospecção (Lista Fria)","Escolha do Perfil","Conexão no LinkedIn","Abordagem X1 DM LinkedIn","Ligação de qualificação","Call de Diagnóstico e vendas"],
-    resultados:["Fup","Venda","Perdido"], winIndex:1,
-    defaults:[10000,4000,2000,1000,600,300]
+    etapas:["Prospecção (Lista Fria)","Escolha do Perfil","Conexão no LinkedIn","Abordagem X1 DM LinkedIn","Ligação de qualificação","Call de Diagnóstico e vendas","Vendas"],
+    defaults:[10000,4000,2000,1000,600,300,150]
   }
 };
 const PRODUTOS = ["MENTORIA GRC TI START","MENTORIA GRC TI PRO","MENTORIA GRC TI MASTER"];
@@ -264,39 +262,35 @@ function renderNav(){
 }
 
 /* ---------- Render: funil ---------- */
-function renderFunnel(){
+// Constrói os elementos do funil UMA vez; a atualização é feita in-place
+// (sem recriar os sliders), o que evita o travamento ao arrastar.
+function buildFunnel(){
   const f=FUNNELS[current], st=state[current];
   document.getElementById('funnelName').textContent=f.nome;
   document.getElementById('funnelFontes').textContent="Fontes: "+f.fontes.join(" · ");
 
-  const top=st.etapas[0]||0;
   const cont=document.getElementById('funnel');
   cont.innerHTML='';
 
   f.etapas.forEach((nome,i)=>{
-    const val=st.etapas[i];
-    const pctTop= top>0 ? (val/top*100) : 0;
-    const prev= i>0 ? st.etapas[i-1] : null;
-    const conv= (prev && prev>0) ? (val/prev*100) : (i===0?100:0);
-    const width= 30 + 0.7*Math.max(0,Math.min(100,pctTop)); // 30%..100% da faixa
-
+    const isFinal= i===f.etapas.length-1;
     const stage=document.createElement('div');
-    stage.className='stage';
+    stage.className='stage'+(isFinal?' final':'');
     stage.innerHTML=`
       <div class="bar-wrap">
-        <div class="bar" style="width:${width}%;background:linear-gradient(90deg,var(--laranja),var(--laranja-claro));opacity:${0.55+0.45*(1-i/Math.max(1,f.etapas.length-1))}">
-          <span class="s-name">${nome}</span>
-          <span class="s-num">${num(val)}</span>
+        <div class="bar">
+          <span class="s-name">${isFinal?'🏆 ':''}${nome}</span>
+          <span class="s-num"></span>
         </div>
       </div>
       <div class="ctrl">
         <div class="row1">
-          <input type="range" min="0" max="${MAX}" step="10" value="${val}" data-i="${i}" class="sld">
-          <input type="number" min="0" max="${MAX}" value="${val}" data-i="${i}" class="numf">
+          <input type="range" min="0" max="${MAX}" step="10" data-i="${i}" class="sld">
+          <input type="number" min="0" max="${MAX}" data-i="${i}" class="numf">
         </div>
         <div class="meta">
-          <span>${i===0?'Topo':'↓ '+conv.toFixed(1)+'%'}<span class="conv"></span></span>
-          <span class="pct">${pctTop.toFixed(1)}% do topo</span>
+          <span class="conv"></span>
+          <span class="pct"></span>
         </div>
       </div>`;
     cont.appendChild(stage);
@@ -304,37 +298,42 @@ function renderFunnel(){
 
   cont.querySelectorAll('.sld').forEach(el=>el.addEventListener('input',e=>{
     const i=+e.target.dataset.i; state[current].etapas[i]=clamp(+e.target.value);
-    save(); renderFunnel();
+    save(); updateFunnel(e.target);
   }));
   cont.querySelectorAll('.numf').forEach(el=>el.addEventListener('input',e=>{
     const i=+e.target.dataset.i; state[current].etapas[i]=clamp(+e.target.value);
-    save(); renderFunnel();
+    save(); updateFunnel(e.target);
   }));
 
-  renderResults();
+  updateFunnel();
 }
-function clamp(v){ v=isNaN(v)?0:v; return Math.max(0,Math.min(MAX,Math.round(v))); }
 
-function renderResults(){
+// Recalcula números, larguras e percentuais sem recriar os elementos.
+// 'trigger' é o input que disparou (não sobrescrevemos seu valor durante o arraste).
+function updateFunnel(trigger){
   const f=FUNNELS[current], st=state[current];
   const top=st.etapas[0]||0;
-  const lastCall=st.etapas[st.etapas.length-1]||0; // base p/ resultados
-  const cont=document.getElementById('results');
-  cont.innerHTML='';
-  // distribuição ilustrativa a partir da última etapa: ganho=winIndex, demais dividem o resto
-  // mantemos simples: cada resultado é proporção da última call (Ganho = vendas do funil)
-  const dist = f.resultados.map((r,idx)=> idx===f.winIndex ? lastCall : null);
-  f.resultados.forEach((r,idx)=>{
-    const isWin= idx===f.winIndex;
-    const valor= isWin? lastCall : '—';
-    const pct= isWin && top>0 ? (lastCall/top*100).toFixed(1)+'% do topo' : 'resultado do funil';
-    const d=document.createElement('div');
-    d.className='result'+(isWin?' win':'');
-    d.innerHTML=`<div class="r-name">${r}</div><div class="r-num">${isWin?num(lastCall):'—'}</div><div class="r-pct">${isWin?pct:'&nbsp;'}</div>`;
-    cont.appendChild(d);
+  const total=f.etapas.length;
+  document.querySelectorAll('#funnel .stage').forEach((stage,i)=>{
+    const val=st.etapas[i];
+    const pctTop= top>0 ? (val/top*100) : 0;
+    const prev= i>0 ? st.etapas[i-1] : null;
+    const conv= (prev && prev>0) ? (val/prev*100) : (i===0?100:0);
+    const isFinal= i===total-1;
+    const width= 30 + 0.7*Math.max(0,Math.min(100,pctTop)); // 30%..100% da faixa
+    const bar=stage.querySelector('.bar');
+    bar.style.width=width+'%';
+    bar.style.opacity= isFinal ? 1 : (0.55+0.45*(1-i/Math.max(1,total-1)));
+    stage.querySelector('.s-num').textContent=num(val);
+    stage.querySelector('.conv').textContent= i===0 ? 'Topo do funil' : '↓ '+conv.toFixed(1)+'%';
+    stage.querySelector('.pct').textContent= pctTop.toFixed(1)+'% do topo';
+    const sld=stage.querySelector('.sld'), numf=stage.querySelector('.numf');
+    if(sld!==trigger) sld.value=val;
+    if(numf!==trigger) numf.value=val;
   });
-  document.getElementById('funnelSales').textContent=num(lastCall);
+  document.getElementById('funnelSales').textContent=num(st.etapas[total-1]||0);
 }
+function clamp(v){ v=isNaN(v)?0:v; return Math.max(0,Math.min(MAX,Math.round(v))); }
 
 /* ---------- Render: produtos ---------- */
 function renderProducts(){
@@ -384,7 +383,7 @@ function renderTotals(){
   document.getElementById('prodQty').textContent=num(qtd);
 }
 
-function renderAll(){ renderFunnel(); renderProducts(); renderTotals(); }
+function renderAll(){ buildFunnel(); renderProducts(); renderTotals(); }
 
 /* ---------- Reset ---------- */
 document.getElementById('reset').onclick=()=>{
