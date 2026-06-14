@@ -201,10 +201,11 @@
   .dash-card h3{font-size:12px;text-transform:uppercase;letter-spacing:1.5px;color:var(--cinza);margin-bottom:12px}
   .dash-funnels{flex:2;min-width:0}
   .dash-products{flex:1;min-width:0}
-  table.dash-tbl{width:100%;border-collapse:collapse;font-size:13px}
-  table.dash-tbl th{text-align:right;font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--cinza);padding:6px 8px;border-bottom:2px solid var(--cinza-claro)}
+  .dash-note{font-size:11px;color:var(--cinza);margin:-6px 0 12px;line-height:1.4}
+  table.dash-tbl{width:100%;border-collapse:collapse;font-size:12.5px}
+  table.dash-tbl th{text-align:right;font-size:9.5px;text-transform:uppercase;letter-spacing:.3px;color:var(--cinza);padding:6px 6px;border-bottom:2px solid var(--cinza-claro)}
   table.dash-tbl th:first-child{text-align:left}
-  table.dash-tbl td{padding:9px 8px;border-bottom:1px solid #f0f0f0;text-align:right;font-variant-numeric:tabular-nums}
+  table.dash-tbl td{padding:8px 6px;border-bottom:1px solid #f0f0f0;text-align:right;font-variant-numeric:tabular-nums}
   table.dash-tbl td:first-child{text-align:left;font-weight:700}
   table.dash-tbl td .rev{color:var(--laranja);font-weight:800}
   table.dash-tbl tr.tot td{border-top:2px solid var(--preto);border-bottom:none;font-weight:800;padding-top:11px}
@@ -673,14 +674,15 @@ function renderAll(){ buildFunnel(); renderProducts(); renderTotals(); }
 function funnelStats(f){
   const abs=computeAbs(f.stages);
   const top=abs[0]||0;
+  const calls= abs.length>=2 ? abs[abs.length-2] : 0;  // reunião = etapa anterior à última (Vendas)
   let receita=0, qtd=0;
   f.produtos.forEach(p=>{ receita+=(p.qtd||0)*(p.ticket||0); qtd+=(p.qtd||0); });
-  return {top,receita,qtd};
+  return {top,calls,receita,qtd};
 }
 const GOAL=500000;
 function renderDash(){
-  let totalRev=0,totalLeads=0,totalQtd=0;
-  state.funnels.forEach(f=>{ const s=funnelStats(f); totalRev+=s.receita; totalLeads+=s.top; totalQtd+=s.qtd; });
+  let totalRev=0,totalLeads=0,totalQtd=0,totalCalls=0;
+  state.funnels.forEach(f=>{ const s=funnelStats(f); totalRev+=s.receita; totalLeads+=s.top; totalQtd+=s.qtd; totalCalls+=s.calls; });
   document.getElementById('dashRevTop').textContent=brl(totalRev);
 
   const pctGoal= GOAL>0 ? totalRev/GOAL*100 : 0;
@@ -693,18 +695,22 @@ function renderDash(){
 
   const rowsFunis=state.funnels.map(f=>{
     const s=funnelStats(f);
-    const conv= s.top>0 ? s.qtd/s.top*100 : 0;   // conversão do funil = vendas / leads
+    const convLead= s.top>0   ? s.qtd/s.top*100   : 0;   // leads que viraram venda
+    const convCall= s.calls>0 ? s.qtd/s.calls*100 : 0;   // reuniões que viraram venda
     const share= totalRev>0 ? s.receita/totalRev*100 : 0;
     return `<tr>
       <td>${escapeHtml(f.nome)}</td>
       <td>${num(s.top)}</td>
-      <td>${conv.toFixed(1)}%</td>
+      <td>${num(s.calls)}</td>
       <td>${num(s.qtd)}</td>
+      <td>${convLead.toFixed(1)}%</td>
+      <td>${convCall.toFixed(1)}%</td>
       <td><span class="rev">${brl(s.receita)}</span></td>
       <td>${share.toFixed(1)}%<div class="mini-bar"><i style="width:${share}%"></i></div></td>
     </tr>`;
   }).join('');
-  const convTot= totalLeads>0 ? totalQtd/totalLeads*100 : 0;
+  const convLeadTot= totalLeads>0 ? totalQtd/totalLeads*100 : 0;
+  const convCallTot= totalCalls>0 ? totalQtd/totalCalls*100 : 0;
 
   const rowsProd=prod.map(p=>{
     const parts=p.nome.split(' '), tier=parts[parts.length-1], base=parts.slice(0,-1).join(' ');
@@ -727,11 +733,12 @@ function renderDash(){
     <div class="dash-cols">
       <div class="dash-card dash-funnels">
         <h3>Por funil</h3>
+        <p class="dash-note">Conv. Lead→Venda = vendas ÷ leads de entrada · Conv. Reunião→Venda = vendas ÷ reuniões (etapa anterior a Vendas)</p>
         <table class="dash-tbl">
-          <thead><tr><th>Funil</th><th>Leads</th><th>Conversão</th><th>Vendas</th><th>Receita</th><th>Participação</th></tr></thead>
+          <thead><tr><th>Funil</th><th>Leads</th><th>Reuniões</th><th>Vendas</th><th>Conv. Lead→Venda</th><th>Conv. Reunião→Venda</th><th>Receita</th><th>Participação</th></tr></thead>
           <tbody>
             ${rowsFunis}
-            <tr class="tot"><td>TOTAL</td><td>${num(totalLeads)}</td><td>${convTot.toFixed(1)}%</td><td>${num(totalQtd)}</td><td><span class="rev">${brl(totalRev)}</span></td><td>100%</td></tr>
+            <tr class="tot"><td>TOTAL</td><td>${num(totalLeads)}</td><td>${num(totalCalls)}</td><td>${num(totalQtd)}</td><td>${convLeadTot.toFixed(1)}%</td><td>${convCallTot.toFixed(1)}%</td><td><span class="rev">${brl(totalRev)}</span></td><td>100%</td></tr>
           </tbody>
         </table>
       </div>
