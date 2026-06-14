@@ -71,16 +71,32 @@
   .funnel-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}
   .funnel-head h3{font-size:13px;text-transform:uppercase;letter-spacing:1.5px;color:var(--cinza)}
   .funnel-head .hint{font-size:11px;color:#aaa}
+  .funnel-head .head-right{display:flex;align-items:center;gap:12px}
+  .add-stage{
+    background:var(--laranja);color:#fff;border:none;border-radius:8px;padding:7px 12px;font-size:12px;font-weight:700;
+    cursor:pointer;box-shadow:0 2px 8px rgba(230,126,34,.35);transition:.15s;
+  }
+  .add-stage:hover{background:#d35400}
   .funnel{flex:1;display:flex;flex-direction:column;justify-content:center;gap:7px;padding:4px 0}
   .stage{display:flex;align-items:center;gap:14px}
   .stage .bar-wrap{flex:1;display:flex;justify-content:center}
   .bar{
     height:clamp(34px,6.2vh,52px);border-radius:9px;display:flex;align-items:center;justify-content:space-between;
-    padding:0 16px;color:#fff;min-width:120px;transition:width .25s ease;position:relative;overflow:hidden;
-    box-shadow:0 2px 6px rgba(230,126,34,.25);
+    padding:0 14px;color:#fff;min-width:150px;transition:width .25s ease;position:relative;
+    background:linear-gradient(135deg,#f6a93b 0%,#e67e22 100%);
+    border:2px solid #c96a16;
+    box-shadow:0 3px 10px rgba(200,100,20,.35);
   }
-  .bar .s-name{font-size:12.5px;font-weight:700;white-space:nowrap;text-shadow:0 1px 2px rgba(0,0,0,.18);overflow:hidden;text-overflow:ellipsis}
-  .bar .s-num{font-size:13px;font-weight:800;margin-left:12px;white-space:nowrap}
+  .bar .s-name{font-size:12.5px;font-weight:700;white-space:nowrap;text-shadow:0 1px 2px rgba(0,0,0,.30);overflow:hidden;text-overflow:ellipsis}
+  .bar .s-right{display:flex;align-items:center;gap:6px;flex-shrink:0;margin-left:10px}
+  .bar .s-num{font-size:13px;font-weight:800;white-space:nowrap;text-shadow:0 1px 2px rgba(0,0,0,.25)}
+  .bar .s-actions{display:flex;gap:3px;opacity:0;transition:.15s}
+  .stage:hover .s-actions{opacity:1}
+  .bar .s-actions button{
+    width:20px;height:20px;border:none;border-radius:5px;cursor:pointer;font-size:11px;line-height:1;
+    background:rgba(255,255,255,.25);color:#fff;display:flex;align-items:center;justify-content:center;
+  }
+  .bar .s-actions button:hover{background:rgba(0,0,0,.35)}
   .stage .ctrl{width:230px;flex-shrink:0;display:flex;flex-direction:column;gap:2px}
   .stage .ctrl .row1{display:flex;align-items:center;gap:8px}
   .stage .ctrl input[type=range]{flex:1;accent-color:var(--laranja);cursor:pointer}
@@ -163,7 +179,10 @@
       <section class="funnel-card">
         <div class="funnel-head">
           <h3>Etapas do funil</h3>
-          <span class="hint">arraste os controles • 0 a 10.000 leads • % relativo ao topo</span>
+          <div class="head-right">
+            <span class="hint">arraste • 0–10.000 • passe o mouse na etapa p/ ✎ editar / ✕ excluir</span>
+            <button class="add-stage" id="addStage">+ Etapa</button>
+          </div>
         </div>
         <div class="funnel" id="funnel"></div>
       </section>
@@ -219,14 +238,17 @@ const brl = n => new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL',
 const num = n => new Intl.NumberFormat('pt-BR').format(Math.round(n||0));
 
 /* ---------- Estado ---------- */
+// Cada funil guarda suas próprias etapas (nome + valor), o que permite
+// incluir/excluir/editar etapas sem depender dos padrões fixos.
+function freshFunnel(k){
+  return {
+    stages:FUNNELS[k].etapas.map((nome,i)=>({nome,val:FUNNELS[k].defaults[i]})),
+    produtos:PRODUTOS.map(()=>({qtd:0,ticket:0}))
+  };
+}
 function freshState(){
   const s={};
-  for(const k in FUNNELS){
-    s[k]={
-      etapas:[...FUNNELS[k].defaults],
-      produtos:PRODUTOS.map(()=>({qtd:0,ticket:0}))
-    };
-  }
+  for(const k in FUNNELS) s[k]=freshFunnel(k);
   return s;
 }
 function load(){
@@ -235,10 +257,14 @@ function load(){
     if(!raw) return freshState();
     const base=freshState();
     for(const k in base){
-      if(raw[k]){
-        if(Array.isArray(raw[k].etapas)) raw[k].etapas.forEach((v,i)=>{ if(i<base[k].etapas.length) base[k].etapas[i]=v; });
-        if(Array.isArray(raw[k].produtos)) raw[k].produtos.forEach((p,i)=>{ if(i<3) base[k].produtos[i]={qtd:p.qtd||0,ticket:p.ticket||0}; });
+      const r=raw[k]; if(!r) continue;
+      if(Array.isArray(r.stages)){            // formato novo
+        const st=r.stages.filter(s=>s&&typeof s.nome==='string').map(s=>({nome:s.nome,val:clamp(s.val)}));
+        if(st.length>=1) base[k].stages=st;
+      }else if(Array.isArray(r.etapas)){       // formato antigo (só números por índice)
+        r.etapas.forEach((v,i)=>{ if(i<base[k].stages.length) base[k].stages[i].val=clamp(v); });
       }
+      if(Array.isArray(r.produtos)) r.produtos.forEach((p,i)=>{ if(i<3) base[k].produtos[i]={qtd:p.qtd||0,ticket:p.ticket||0}; });
     }
     return base;
   }catch(e){ return freshState(); }
@@ -255,7 +281,7 @@ function renderNav(){
   for(const k in FUNNELS){
     const b=document.createElement('button');
     b.className='funnel-btn'+(k===current?' active':'');
-    b.innerHTML=`<span class="dot"></span><span>${FUNNELS[k].nome}<small>${FUNNELS[k].etapas.length} etapas</small></span>`;
+    b.innerHTML=`<span class="dot"></span><span>${FUNNELS[k].nome}<small>${state[k].stages.length} etapas</small></span>`;
     b.onclick=()=>{ current=k; renderNav(); renderAll(); };
     nav.appendChild(b);
   }
@@ -272,15 +298,21 @@ function buildFunnel(){
   const cont=document.getElementById('funnel');
   cont.innerHTML='';
 
-  f.etapas.forEach((nome,i)=>{
-    const isFinal= i===f.etapas.length-1;
+  st.stages.forEach((s,i)=>{
+    const isFinal= i===st.stages.length-1;
     const stage=document.createElement('div');
     stage.className='stage'+(isFinal?' final':'');
     stage.innerHTML=`
       <div class="bar-wrap">
         <div class="bar">
-          <span class="s-name">${isFinal?'🏆 ':''}${nome}</span>
-          <span class="s-num"></span>
+          <span class="s-name">${isFinal?'🏆 ':''}${escapeHtml(s.nome)}</span>
+          <span class="s-right">
+            <span class="s-num"></span>
+            <span class="s-actions">
+              <button class="s-edit" data-i="${i}" title="Renomear etapa">✎</button>
+              <button class="s-del" data-i="${i}" title="Excluir etapa">✕</button>
+            </span>
+          </span>
         </div>
       </div>
       <div class="ctrl">
@@ -297,33 +329,57 @@ function buildFunnel(){
   });
 
   cont.querySelectorAll('.sld').forEach(el=>el.addEventListener('input',e=>{
-    const i=+e.target.dataset.i; state[current].etapas[i]=clamp(+e.target.value);
+    const i=+e.target.dataset.i; state[current].stages[i].val=clamp(+e.target.value);
     save(); updateFunnel(e.target);
   }));
   cont.querySelectorAll('.numf').forEach(el=>el.addEventListener('input',e=>{
-    const i=+e.target.dataset.i; state[current].etapas[i]=clamp(+e.target.value);
+    const i=+e.target.dataset.i; state[current].stages[i].val=clamp(+e.target.value);
     save(); updateFunnel(e.target);
   }));
+  cont.querySelectorAll('.s-edit').forEach(el=>el.addEventListener('click',e=>renameStage(+e.currentTarget.dataset.i)));
+  cont.querySelectorAll('.s-del').forEach(el=>el.addEventListener('click',e=>removeStage(+e.currentTarget.dataset.i)));
 
   updateFunnel();
+}
+
+function escapeHtml(s){ return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+/* ---------- Incluir / excluir / editar etapas ---------- */
+function addStage(){
+  const nome=prompt('Nome da nova etapa:','Nova etapa');
+  if(nome===null) return;
+  state[current].stages.push({nome:(nome.trim()||'Nova etapa'),val:0});
+  save(); renderNav(); buildFunnel();
+}
+function renameStage(i){
+  const st=state[current];
+  const nome=prompt('Editar nome da etapa:',st.stages[i].nome);
+  if(nome===null) return;
+  st.stages[i].nome=nome.trim()||st.stages[i].nome;
+  save(); buildFunnel();
+}
+function removeStage(i){
+  const st=state[current];
+  if(st.stages.length<=2){ alert('O funil precisa de pelo menos 2 etapas.'); return; }
+  if(!confirm('Excluir a etapa "'+st.stages[i].nome+'"?')) return;
+  st.stages.splice(i,1);
+  save(); renderNav(); buildFunnel();
 }
 
 // Recalcula números, larguras e percentuais sem recriar os elementos.
 // 'trigger' é o input que disparou (não sobrescrevemos seu valor durante o arraste).
 function updateFunnel(trigger){
-  const f=FUNNELS[current], st=state[current];
-  const top=st.etapas[0]||0;
-  const total=f.etapas.length;
+  const st=state[current];
+  const top=st.stages[0]?st.stages[0].val:0;
+  const total=st.stages.length;
   document.querySelectorAll('#funnel .stage').forEach((stage,i)=>{
-    const val=st.etapas[i];
+    const val=st.stages[i].val;
     const pctTop= top>0 ? (val/top*100) : 0;
-    const prev= i>0 ? st.etapas[i-1] : null;
+    const prev= i>0 ? st.stages[i-1].val : null;
     const conv= (prev && prev>0) ? (val/prev*100) : (i===0?100:0);
-    const isFinal= i===total-1;
     const width= 30 + 0.7*Math.max(0,Math.min(100,pctTop)); // 30%..100% da faixa
     const bar=stage.querySelector('.bar');
     bar.style.width=width+'%';
-    bar.style.opacity= isFinal ? 1 : (0.55+0.45*(1-i/Math.max(1,total-1)));
     stage.querySelector('.s-num').textContent=num(val);
     stage.querySelector('.conv').textContent= i===0 ? 'Topo do funil' : '↓ '+conv.toFixed(1)+'%';
     stage.querySelector('.pct').textContent= pctTop.toFixed(1)+'% do topo';
@@ -331,7 +387,7 @@ function updateFunnel(trigger){
     if(sld!==trigger) sld.value=val;
     if(numf!==trigger) numf.value=val;
   });
-  document.getElementById('funnelSales').textContent=num(st.etapas[total-1]||0);
+  document.getElementById('funnelSales').textContent=num(total?st.stages[total-1].val:0);
 }
 function clamp(v){ v=isNaN(v)?0:v; return Math.max(0,Math.min(MAX,Math.round(v))); }
 
@@ -385,11 +441,13 @@ function renderTotals(){
 
 function renderAll(){ buildFunnel(); renderProducts(); renderTotals(); }
 
-/* ---------- Reset ---------- */
+/* ---------- Reset (restaura etapas padrão e zera produtos) ---------- */
 document.getElementById('reset').onclick=()=>{
-  state[current]={etapas:[...FUNNELS[current].defaults],produtos:PRODUTOS.map(()=>({qtd:0,ticket:0}))};
-  save(); renderAll();
+  if(!confirm('Restaurar as etapas padrão deste funil e zerar os produtos?')) return;
+  state[current]=freshFunnel(current);
+  save(); renderNav(); renderAll();
 };
+document.getElementById('addStage').onclick=addStage;
 
 renderNav();
 renderAll();
