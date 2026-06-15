@@ -149,6 +149,7 @@
 
   /* ---------- Percentual no controle ---------- */
   .stage .ctrl .row1 .unit{font-size:11px;color:var(--cinza);font-weight:700;width:14px;text-align:center}
+  .stage .ctrl .row1 .vendas-note{font-size:11px;color:var(--laranja);font-weight:700;font-style:italic;width:100%;text-align:right}
 
   /* ---------- Sidebar: divisor + item Dash ---------- */
   .nav .divisor{height:1px;background:#333;margin:14px 2px 6px}
@@ -275,7 +276,7 @@
           <div class="total-box">
             <div class="lbl">RECEITA DESTE FUNIL</div>
             <div class="val" id="revTotal">R$ 0</div>
-            <div class="sales">Vendas no funil: <b id="funnelSales">0</b> · Vendas lançadas: <b id="prodQty">0</b></div>
+            <div class="sales">Total de vendas: <b id="funnelSales">0</b> <span id="prodQty" style="display:none"></span></div>
           </div>
         </aside>
       </div>
@@ -304,7 +305,7 @@
       <h3 id="modalTitle">Criar novo funil</h3>
       <label class="modal-lbl">Nome do funil</label>
       <input id="mFunnelName" class="modal-input" placeholder="Ex.: INDICAÇÕES" autocomplete="off">
-      <label class="modal-lbl">Etapas <span class="modal-hint">(a 1ª etapa é a entrada de leads)</span></label>
+      <label class="modal-lbl">Etapas <span class="modal-hint">(a 1ª é a entrada de leads; a etapa "Vendas" é adicionada automaticamente no fim)</span></label>
       <div id="mStages"></div>
       <button id="mAddStage" class="modal-add" type="button">+ Adicionar etapa</button>
       <div class="modal-foot">
@@ -370,12 +371,17 @@ function normalizeStages(stages){
   });
   return stages;
 }
-// Calcula os valores absolutos de cada etapa a partir do topo + conversões.
-function computeAbs(stages){
-  const abs=[];
-  stages.forEach((s,i)=>{
-    abs[i]= i===0 ? clamp(s.val) : Math.round((abs[i-1]||0)*clampPct(s.conv)/100);
-  });
+// Total de vendas do funil = soma das quantidades lançadas nos produtos.
+function salesOf(f){ return f.produtos.reduce((a,p)=>a+(p.qtd||0),0); }
+// Calcula os valores absolutos. Topo = leads; etapas do meio = conversão da
+// anterior; ÚLTIMA etapa = Vendas (resultado, vem dos produtos, sem slider).
+function computeAbs(f){
+  const s=f.stages, abs=[], last=s.length-1;
+  for(let i=0;i<s.length;i++){
+    if(i===0) abs[i]=clamp(s[i].val);
+    else if(i===last) abs[i]=salesOf(f);
+    else abs[i]=Math.round((abs[i-1]||0)*clampPct(s[i].conv)/100);
+  }
   return abs;
 }
 function sanitizeStages(arr){
@@ -471,33 +477,44 @@ function buildFunnel(){
   const cont=document.getElementById('funnel');
   cont.innerHTML='';
 
+  const last=f.stages.length-1;
   f.stages.forEach((s,i)=>{
-    const st=f; // alias p/ trecho abaixo
-    const isFinal= i===st.stages.length-1;
+    const isFinal= i===last;       // última etapa = Vendas (resultado, sem slider)
     const isTop= i===0;
     const stage=document.createElement('div');
     stage.className='stage'+(isFinal?' final':'');
-    const ctrl = isTop
-      ? `<input type="range" min="0" max="${MAX}" step="10" data-i="${i}" class="sld">
+    stage.dataset.i=i;
+    // Controles: topo = leads; etapas do meio = % de conversão; Vendas = só leitura.
+    let ctrl;
+    if(isFinal){
+      ctrl=`<span class="vendas-note">= total de vendas lançadas nos produtos →</span>`;
+    }else if(isTop){
+      ctrl=`<input type="range" min="0" max="${MAX}" step="10" data-i="${i}" class="sld">
          <input type="number" min="0" max="${MAX}" step="10" data-i="${i}" class="numf">
-         <span class="unit">leads</span>`
-      : `<input type="range" min="0" max="100" step="0.1" data-i="${i}" class="sld">
+         <span class="unit">leads</span>`;
+    }else{
+      ctrl=`<input type="range" min="0" max="100" step="0.1" data-i="${i}" class="sld">
          <input type="number" min="0" max="100" step="0.1" data-i="${i}" class="numf">
          <span class="unit">%</span>`;
-    stage.dataset.i=i;
+    }
+    // Botões da barra: a etapa Vendas não pode ser arrastada, renomeada nem excluída.
+    const leftBtns = isFinal
+      ? `<span class="s-name">🏆 ${escapeHtml(s.nome)}</span>`
+      : `<button class="s-drag" draggable="true" title="Arraste para reordenar">⠿</button>
+         <span class="s-name">${escapeHtml(s.nome)}</span>`;
+    const actions = isFinal
+      ? ``
+      : `<span class="s-actions">
+           <button class="s-edit" data-i="${i}" title="Renomear etapa">✎</button>
+           <button class="s-del" data-i="${i}" title="Excluir etapa">✕</button>
+         </span>`;
     stage.innerHTML=`
       <div class="bar-wrap">
         <div class="bar">
-          <span class="s-left">
-            <button class="s-drag" draggable="true" title="Arraste para reordenar">⠿</button>
-            <span class="s-name">${isFinal?'🏆 ':''}${escapeHtml(s.nome)}</span>
-          </span>
+          <span class="s-left">${leftBtns}</span>
           <span class="s-right">
             <span class="s-num"></span>
-            <span class="s-actions">
-              <button class="s-edit" data-i="${i}" title="Renomear etapa">✎</button>
-              <button class="s-del" data-i="${i}" title="Excluir etapa">✕</button>
-            </span>
+            ${actions}
           </span>
         </div>
       </div>
@@ -531,6 +548,7 @@ let dragFrom=null;
 function attachDnD(stage){
   const i=+stage.dataset.i;
   const handle=stage.querySelector('.s-drag');
+  if(!handle) return;   // etapa Vendas não é arrastável
   handle.addEventListener('dragstart',e=>{
     dragFrom=i; stage.classList.add('dragging');
     e.dataTransfer.effectAllowed='move';
@@ -553,12 +571,15 @@ function attachDnD(stage){
 // Move a etapa preservando os números absolutos: o novo topo vira o valor
 // absoluto que tinha, e as demais mantêm sua taxa de conversão.
 function reorderStages(from,to){
-  const stages=getFunnel(current).stages;
-  const abs=computeAbs(stages);
+  const f=getFunnel(current), stages=f.stages, last=stages.length-1;
+  if(from===last) return;                 // a etapa Vendas não se move
+  if(to>=last) to=last-1;                  // ninguém pode ir depois da Vendas
+  const abs=computeAbs(f);
   const absMap=new Map(); stages.forEach((s,idx)=>absMap.set(s,abs[idx]));
   const [moved]=stages.splice(from,1);
   stages.splice(to,0,moved);
   stages.forEach((s,idx)=>{
+    if(idx===stages.length-1) return;     // Vendas: mantém como está (resultado)
     if(idx===0){ s.val=clamp(absMap.get(s)!==undefined?absMap.get(s):(s.val||0)); delete s.conv; }
     else { if(s.conv===undefined) s.conv=50; delete s.val; }
   });
@@ -571,11 +592,13 @@ function escapeHtml(s){ return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':
 function addStage(){
   const nome=prompt('Nome da nova etapa (entra como % de conversão da etapa anterior):','Nova etapa');
   if(nome===null) return;
-  getFunnel(current).stages.push({nome:(nome.trim()||'Nova etapa'),conv:50});
+  const st=getFunnel(current).stages;
+  st.splice(st.length-1,0,{nome:(nome.trim()||'Nova etapa'),conv:50});  // antes da Vendas
   save(); renderNav(); buildFunnel();
 }
 function renameStage(i){
   const st=getFunnel(current);
+  if(i===st.stages.length-1) return;        // Vendas não é renomeável
   const nome=prompt('Editar nome da etapa:',st.stages[i].nome);
   if(nome===null) return;
   st.stages[i].nome=nome.trim()||st.stages[i].nome;
@@ -583,9 +606,10 @@ function renameStage(i){
 }
 function removeStage(i){
   const st=getFunnel(current);
-  if(st.stages.length<=2){ alert('O funil precisa de pelo menos 2 etapas.'); return; }
+  if(i===st.stages.length-1){ alert('A etapa Vendas é fixa e não pode ser excluída.'); return; }
+  if(st.stages.length<=2){ alert('O funil precisa de pelo menos 2 etapas (incluindo Vendas).'); return; }
   if(!confirm('Excluir a etapa "'+st.stages[i].nome+'"?')) return;
-  const abs=computeAbs(st.stages);          // guarda absolutos antes de remover
+  const abs=computeAbs(st);                  // guarda absolutos antes de remover
   st.stages.splice(i,1);
   // se removeu o topo, a nova 1ª etapa precisa virar absoluta (leads de entrada)
   if(i===0 && st.stages[0] && st.stages[0].val===undefined){
@@ -598,25 +622,27 @@ function removeStage(i){
 // 'trigger' é o input que disparou (não sobrescrevemos seu valor durante o arraste).
 function updateFunnel(trigger){
   const st=getFunnel(current);
-  const abs=computeAbs(st.stages);
+  const abs=computeAbs(st);
   const top=abs[0]||0;
-  const total=st.stages.length;
+  const total=st.stages.length, last=total-1;
   document.querySelectorAll('#funnel .stage').forEach((stage,i)=>{
     const val=abs[i];
+    const isFinal= i===last;
     const pctTop= top>0 ? (val/top*100) : 0;
-    const conv= i===0 ? 100 : clampPct(st.stages[i].conv);
+    const prev= i>0 ? (abs[i-1]||0) : 0;
+    const convReal= prev>0 ? val/prev*100 : 0;  // conversão real da etapa anterior
     const width= 30 + 0.7*Math.max(0,Math.min(100,pctTop)); // 30%..100% da faixa
     const bar=stage.querySelector('.bar');
     bar.style.width=width+'%';
     stage.querySelector('.s-num').textContent=num(val);
-    stage.querySelector('.conv').textContent= i===0 ? 'Topo do funil' : '↓ '+conv.toFixed(1)+'% da anterior';
+    stage.querySelector('.conv').textContent= i===0 ? 'Topo do funil'
+      : isFinal ? '↓ '+convReal.toFixed(1)+'% da reunião'
+      : '↓ '+clampPct(st.stages[i].conv).toFixed(1)+'% da anterior';
     stage.querySelector('.pct').textContent= i===0 ? 'leads de entrada' : pctTop.toFixed(1)+'% do topo';
     const sld=stage.querySelector('.sld'), numf=stage.querySelector('.numf');
-    const v= i===0 ? val : conv;
-    if(sld!==trigger) sld.value=v;
-    if(numf!==trigger) numf.value=v;
+    if(sld){ const v= i===0 ? val : clampPct(st.stages[i].conv); if(sld!==trigger) sld.value=v; if(numf!==trigger) numf.value=v; }
   });
-  document.getElementById('funnelSales').textContent=num(total?abs[total-1]:0);
+  document.getElementById('funnelSales').textContent=num(total?abs[last]:0);
 }
 function clamp(v){ v=+v; v=isNaN(v)?0:v; return Math.max(0,Math.min(MAX,Math.round(v))); }
 function clampPct(v){ v=+v; v=isNaN(v)?0:v; return Math.max(0,Math.min(100,Math.round(v*10)/10)); }
@@ -652,7 +678,7 @@ function renderProducts(){
   cont.querySelectorAll('input').forEach(el=>el.addEventListener('input',e=>{
     const i=+e.target.dataset.i, fld=e.target.dataset.f, f=getFunnel(current);
     f.produtos[i][fld]=Math.max(0,+e.target.value||0);
-    save(); renderTotals(); // não re-render inputs p/ não perder o foco
+    save(); renderTotals(); updateFunnel(); // atualiza receita E a etapa Vendas do funil
     const p=f.produtos[i];
     e.target.closest('.product').querySelector('.p-sub b').textContent=brl((p.qtd||0)*(p.ticket||0));
   }));
@@ -788,14 +814,14 @@ function openFunnelEditor(id){
     const f=getFunnel(id);
     document.getElementById('modalTitle').textContent='Editar funil';
     document.getElementById('mFunnelName').value=f.nome;
-    f.stages.forEach((s,i)=>addModalStageRow(s.nome,String(i)));
+    f.stages.slice(0,-1).forEach((s,i)=>addModalStageRow(s.nome,String(i)));  // exceto Vendas
     del.style.display = state.funnels.length>1 ? '' : 'none';  // só não exclui se for o único
   }else{
     document.getElementById('modalTitle').textContent='Criar novo funil';
     document.getElementById('mFunnelName').value='';
     addModalStageRow('Entrada de leads');
     addModalStageRow('Qualificação');
-    addModalStageRow('Vendas');
+    addModalStageRow('Reunião');
     del.style.display='none';
   }
   document.getElementById('modal').style.display='flex';
@@ -809,22 +835,26 @@ function saveFunnelEditor(){
   const rows=[...document.querySelectorAll('#mStages .mstage')];
   const stagesInfo=rows.map(r=>({nome:r.querySelector('.ms-name').value.trim(), orig:r.dataset.orig}))
                        .filter(s=>s.nome);
-  if(stagesInfo.length<2){ alert('O funil precisa de pelo menos 2 etapas.'); return; }
+  if(stagesInfo.length<1){ alert('O funil precisa de ao menos 1 etapa (além de Vendas).'); return; }
 
   if(editingId){
     const f=getFunnel(editingId);
     const old=f.stages;
+    const vendas=old[old.length-1] || {nome:'Vendas'};   // preserva a etapa Vendas
     const newStages=stagesInfo.map(s=>{
       if(s.orig!=='new' && old[+s.orig]) return {...old[+s.orig], nome:s.nome};
       return {nome:s.nome, conv:50};
     });
+    newStages.push({...vendas, nome:'Vendas'});           // Vendas sempre por último
     normalizeStages(newStages);
     f.nome=nome; f.stages=newStages;
     save(); renderNav();
     if(current===editingId) renderAll();
   }else{
+    const flow=stagesInfo.map(s=>({nome:s.nome}));
+    flow.push({nome:'Vendas'});                           // etapa final automática
     const f={ id:uid(), nome, isDefault:false, fontes:[],
-      stages:normalizeStages(stagesInfo.map(s=>({nome:s.nome}))),
+      stages:normalizeStages(flow),
       produtos:PRODUTOS.map(()=>({qtd:0,ticket:0})) };
     state.funnels.push(f);
     save(); select(f.id);
